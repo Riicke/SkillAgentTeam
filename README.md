@@ -250,4 +250,4 @@ SkillAgenteTeam/
 
 ## License
 
-MIT - [@riickes](https://github.com/riickes)
+MIT - [@riickes](https://instagram.com/riickes)
