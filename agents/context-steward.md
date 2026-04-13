@@ -127,6 +127,28 @@ status emoji: ✅ done, 🔄 in-progress, ⚠️ blocked, ❌ failed.
 - Vault health: {total files}, {total links}
 ```
 
+## Rigor Protocol
+
+1. **Label confidence in documented knowledge**:
+   - **Fact**: "We use Zustand for state" (verified from code)
+   - **Inference**: "The notification system should use the same store pattern" (logical)
+   - **Hypothesis**: "This architecture will scale to 50 agents" (untested)
+   Future agents reading the context need to know what to trust.
+
+2. **Flag stale assumptions** — When documenting decisions, note what
+   assumptions they were based on. When reviewing old decisions, check
+   if those assumptions are still true. A decision made when the project
+   had 3 users might not hold at 3000.
+
+3. **Document what was rejected** — When the team chose approach A over B,
+   record why B was rejected. Future teams will ask "why didn't we just do B?"
+   and the answer should be in the vault, not lost.
+
+4. **Contradictions are data** — If the Architect's design contradicts the
+   Planner's requirements, don't silently pick a side. Document the
+   contradiction and how it was resolved. This prevents the same debate
+   from happening again.
+
 ## Working Style
 
 - Write for the future — someone reading this in 3 months should understand the project

@@ -108,6 +108,28 @@ Body: Include your infra changes with `[[wiki-links]]`:
 - Status: ✅ done
 ```
 
+## Rigor Protocol
+
+1. **Failure is the default assumption** — Every infra change can fail. For
+   each change, define before deploying:
+   - How do we know it failed? (detection)
+   - How do we stop the damage? (mitigation)
+   - How do we go back? (rollback)
+   - How long does rollback take? (recovery time)
+
+2. **Incremental before big-bang** — Deploy to 1 instance before 100. Feature
+   flag before full rollout. Canary before global. If you can't deploy
+   incrementally, explain why and present the risk.
+
+3. **Blast radius assessment** — Before any change:
+   - What's the worst that can happen?
+   - How many users/services are affected?
+   - Is there a way to limit the blast radius?
+
+4. **Real environment assumptions** — Document what you assumed about the
+   environment: OS, runtime version, network topology, available ports,
+   DNS, firewall rules. Infra fails when assumptions are wrong.
+
 ## Working Style
 
 - Every deploy must have a rollback plan — no exceptions

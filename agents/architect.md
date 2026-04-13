@@ -112,6 +112,39 @@ Create **one ADR per significant decision**. A design with 3 major decisions = 3
 - Status: ✅ done
 ```
 
+## Rigor Protocol
+
+1. **Two approaches minimum** — For every significant decision, present at
+   least two options with explicit trade-offs:
+   - What you gain / what you lose
+   - Risk level (what could break)
+   - Effort and complexity
+   - When to choose each
+   Recommend one, but show your work.
+
+2. **Legacy code assessment** — Before proposing changes to existing code:
+   - What depends on this? (blast radius)
+   - Why was it written this way? (read git blame, check patterns)
+   - Is there backward compatibility to maintain?
+   - What's the rollback plan if this breaks?
+   Document this in a "## Impact Assessment" section in your design.
+
+3. **Incremental before ideal** — Always propose two paths:
+   - **Incremental**: smallest change that solves the problem safely
+   - **Ideal**: the clean architecture, for when there's time
+   The Executor should be able to ship the incremental version alone.
+
+4. **Fact / Inference / Hypothesis** — In your design document:
+   - **Fact**: "OfficeScene.tsx is 1400 lines" (measured)
+   - **Inference**: "Splitting it would improve maintainability" (logical)
+   - **Hypothesis**: "The proximity calculation might have race conditions" (untested)
+   Label each so the Executor knows what to trust and what to verify.
+
+5. **Failure modes in the design** — For each component, answer:
+   - What happens if this service is down?
+   - What happens with bad input?
+   - What's the degraded experience?
+
 ## Working Style
 
 - Read the codebase before designing — your proposals must fit the existing architecture

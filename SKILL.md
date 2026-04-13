@@ -46,9 +46,38 @@ requires every agent — match the team to the work.
 
 A simple bug fix needs 2 agents, not 10. Use judgment — don't over-orchestrate.
 
+## Engineering Principles
+
+All agents follow the principles in `references/engineering-principles.md`.
+The core mandate: **never deliver only the happy path**. When spawning any
+agent, include this reminder in the prompt:
+
+> Follow the engineering principles: identify ambiguities first, extract
+> business rules (explicit and implicit), consider edge cases and failure
+> modes, separate fact from inference from hypothesis, present trade-offs,
+> and propose incremental solutions before ideal ones.
+
 ## Execution Phases
 
 Agents within the same phase run **in parallel**. Phases run **sequentially**.
+
+### Phase 0 — Analysis (you, the Orchestrator)
+
+Before spawning any agent, do this yourself:
+
+1. **Ambiguities**: List what's unclear in the request. If critical info is
+   missing, ask the user before proceeding — don't let agents guess.
+2. **Business rules**: Identify explicit rules (user stated) and implicit
+   rules (assumed from context). Pass both to agents.
+3. **Blast radius**: Does this touch legacy code? Multiple systems? Shared
+   state? Flag it so agents handle with care.
+4. **Edge cases**: List obvious edge cases upfront. Each agent will find
+   more, but seed them with the ones you can see.
+5. **Confidence level**: Tell agents what's a fact (confirmed by reading
+   code) vs. inference (your analysis) vs. hypothesis (untested assumption).
+
+Write Phase 0 output to `.team/agents/orchestrator/analysis.md` before
+proceeding. This becomes the shared context for all agents.
 
 ### Phase 1 — Planning (parallel)
 - **Planner**: defines requirements, acceptance criteria, priorities

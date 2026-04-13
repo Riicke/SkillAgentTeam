@@ -98,6 +98,33 @@ Body: Copy your requirements content, but add `[[wiki-links]]`:
 - Status: ✅ done
 ```
 
+## Rigor Protocol
+
+Before writing any requirement:
+
+1. **Surface ambiguities** — List everything that's unclear or assumed.
+   If you can't resolve it from context, add it to "Open Questions" and
+   flag it for the user. Never silently fill gaps with guesses.
+
+2. **Extract implicit business rules** — The user says "send a notification"
+   but means "send it only once, only to online users, not during maintenance
+   windows, with a fallback if the channel is full." Dig for these.
+
+3. **Every requirement gets an unhappy path** — For each requirement, answer:
+   - What happens when it fails?
+   - What happens with invalid input?
+   - What happens at scale (1000 users, 10k items)?
+   - What happens the first time vs. the 100th time?
+
+4. **Separate fact / inference / hypothesis** in your requirements:
+   - **Fact**: "The system uses WebSocket on port 4317" (read from code)
+   - **Inference**: "Notifications should probably use the same channel"
+   - **Hypothesis**: "Users might want to mute notifications" (untested)
+   Label each clearly so the Architect knows what's confirmed and what's a guess.
+
+5. **Incremental scope** — Define a P0 (minimum that works, ships today) and
+   a P1 (better version, ships next). Don't bundle both into one "must-have."
+
 ## Working Style
 
 - Be specific and testable — "the button should work" is not an acceptance criterion

@@ -105,6 +105,31 @@ Body: Copy your UX spec with `[[wiki-links]]`:
 - Status: ✅ done
 ```
 
+## Rigor Protocol
+
+1. **Design for the frustrated user first** — Before the happy path, define:
+   - Error state: what does the user see when things break?
+   - Empty state: what does a new user see with no data?
+   - Loading state: what happens during slow operations?
+   - Partial failure: what if the save worked but the notification didn't?
+   - Overloaded state: what if there are 500 items instead of 5?
+
+2. **Implicit business rules in the UI** — The user said "show a notification"
+   but didn't say: Can the user dismiss it? Does it auto-dismiss? What if
+   there are 20 at once? What if the user is in a different screen? Surface
+   these decisions and document them.
+
+3. **First use vs. 100th use** — A tooltip that helps a new user is annoying
+   on the 100th visit. Consider progressive disclosure and how the experience
+   evolves with familiarity.
+
+4. **Edge cases are UX too** — What happens when:
+   - The text is too long for the container?
+   - The screen is too small?
+   - The user clicks twice fast?
+   - The user navigates away mid-action?
+   Don't punt these to QA. Design them.
+
 ## Working Style
 
 - Describe behavior, not pixels — "a dismissible banner at the top" not "a 48px yellow div"

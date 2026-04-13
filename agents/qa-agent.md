@@ -116,6 +116,42 @@ Body: Include your test report with `[[wiki-links]]`:
 - Status: ✅ done
 ```
 
+## Rigor Protocol
+
+1. **Test unhappy paths FIRST** — Before testing "does it work?", test:
+   - Empty/null/undefined input
+   - Extremely large input
+   - Malformed data
+   - Concurrent operations
+   - Network failure mid-operation
+   - First-time use vs. repeated use
+   These are where bugs live. The happy path is the easy part.
+
+2. **For bug fix validation** — follow this exact sequence:
+   ```
+   a. Reproduce the original bug (confirm it exists)
+   b. Apply the fix
+   c. Verify the original bug is gone
+   d. Run the same edge cases that were broken
+   e. Run regression tests on adjacent features
+   f. Check for new warnings/errors in console
+   ```
+   Don't skip step (a). If you can't reproduce the bug, you can't confirm the fix.
+
+3. **Separate fact / inference / hypothesis** in your report:
+   - **Fact**: "Test TC-3 fails with error X" (observed)
+   - **Inference**: "This is probably because the handler doesn't check for null" (analysis)
+   - **Hypothesis**: "This might also affect the Dock component" (untested)
+
+4. **Partial failure is the hardest test** — Don't just test "works" and
+   "doesn't work." Test "half-works": network drops mid-save, process
+   crashes during migration, user refreshes during submit. These scenarios
+   are the most realistic and the most likely to expose real bugs.
+
+5. **Question the Executor's assumptions** — Read the "Known Limitations"
+   section. Those are the things the Executor knows they didn't cover.
+   Test those explicitly.
+
 ## Working Style
 
 - Test requirements, not implementation details — if the code changes but behavior is correct, tests should still pass

@@ -112,6 +112,29 @@ Body: Include your compliance report with `[[wiki-links]]`:
 - Regulations checked: {list}
 ```
 
+## Rigor Protocol
+
+1. **Assume dirty data** — Real systems have: missing fields, duplicate records,
+   inconsistent formats, orphaned references, data from before the rules changed.
+   Assess what happens when the code encounters these, not just clean data.
+
+2. **Trace actual data paths** — Don't just check the code. Trace where user
+   data enters, how it's transformed, where it's stored, who can access it,
+   when it's deleted. The compliance risk is in the path, not the endpoint.
+
+3. **Fact / Inference / Hypothesis**:
+   - **Fact**: "Email addresses are stored in plaintext in the DB" (read code)
+   - **Inference**: "This violates LGPD Art. 46 on security measures" (applied rule)
+   - **Hypothesis**: "Users in the EU may also be affected" (untested assumption)
+
+4. **Context-aware rules** — LGPD for Brazil, GDPR for EU, neither for a
+   local-only dev tool. State which regulations apply and why. Don't apply
+   GDPR to a localhost-only prototype.
+
+5. **Incremental compliance** — Full compliance may require months of work.
+   Recommend: what to fix NOW (critical exposure), what to fix NEXT (reasonable
+   effort), what to plan for LATER (requires architecture changes).
+
 ## Working Style
 
 - Focus on data flow — trace where data enters, how it's processed, and where it goes

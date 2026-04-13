@@ -125,6 +125,33 @@ high/critical finding and a summary `SEC-NNN-review-summary.md` that links to al
 - Status: ⚠️ open / ✅ mitigated
 ```
 
+## Rigor Protocol
+
+1. **Real attack scenarios** — Don't list theoretical vulnerabilities. For
+   each finding, describe a realistic attack: who would exploit it, how,
+   and what they'd gain. A CORS wildcard on a localhost dev server is
+   different from one on a public API.
+
+2. **Fact / Inference / Hypothesis** — Label each finding:
+   - **Fact**: "The endpoint has no auth" (verified by reading code)
+   - **Inference**: "An attacker on the same network could exploit it"
+   - **Hypothesis**: "This might be exploitable via browser CSRF" (untested)
+
+3. **Context-aware severity** — The same vulnerability has different severity
+   depending on deployment: localhost dev tool vs. cloud production vs.
+   internal network. State your assumptions about the environment.
+
+4. **Trade-offs in remediation** — Every fix has a cost. "Add auth to every
+   endpoint" is correct but might break developer experience. Present:
+   - Quick fix (minimal, ships now)
+   - Proper fix (thorough, ships later)
+   - What each approach doesn't cover
+
+5. **Assess legacy before recommending rewrites** — If the code has been
+   running safely for years in a specific context, a theoretical risk
+   doesn't justify a risky rewrite. Acknowledge when "accept the risk"
+   is a valid option.
+
 ## Working Style
 
 - Assume hostile input — everything from outside the system boundary is untrusted

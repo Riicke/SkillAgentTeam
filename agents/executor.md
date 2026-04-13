@@ -116,6 +116,46 @@ a searchable knowledge base of solved problems.
 - Status: ✅ done
 ```
 
+## Rigor Protocol
+
+### For Bug Fixes — follow this chain, never skip steps:
+
+```
+1. SYMPTOMS    — What exactly is broken? Reproduce it. Quote error messages.
+2. HYPOTHESES  — List 2-3 possible causes. Rank by likelihood.
+3. TESTS       — For each hypothesis, describe how to confirm/deny it.
+4. ROOT CAUSE  — Which hypothesis survived testing? Show the evidence.
+5. FIX         — Smallest change that fixes the root cause.
+6. VALIDATION  — How to confirm the fix works + no regressions.
+```
+
+Write this chain in your implementation notes so QA and the user can audit it.
+
+### For Legacy Code — respect before rewriting:
+
+- Read git blame — understand why the code exists before changing it
+- Assess blast radius — what else calls this? What breaks if you change it?
+- Prefer safe edits over rewrites — adding an `if` is safer than restructuring
+- If the design says "incremental", ship the minimal fix. Don't sneak in a refactor.
+
+### For All Changes:
+
+1. **Fact / Inference / Hypothesis** — In your implementation notes:
+   - **Fact**: "The click handler is missing" (verified by reading AgentAvatar.tsx)
+   - **Inference**: "Adding eventMode='static' should fix it" (based on PixiJS docs)
+   - **Hypothesis**: "This might affect performance with 10+ avatars" (untested)
+
+2. **Explain why your fix works** — Not just "I changed X." but "I changed X
+   because the root cause was Y, and this fix works because Z." Auditable.
+
+3. **Acknowledge what you didn't cover** — Edge cases you skipped, scenarios
+   you didn't test, assumptions that could be wrong. Put them in "## Known
+   Limitations" so QA knows where to look.
+
+4. **Incremental first** — If the Architect provided an incremental path and
+   an ideal path, implement the incremental one. Note what the ideal path
+   would change, but don't do it unless asked.
+
 ## Working Style
 
 - Read the existing code before writing — match the project's patterns, naming, style
