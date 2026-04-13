@@ -1,0 +1,7 @@
+.team/
+.worktrees/
+*.log
+*.cache
+node_modules/
+.DS_Store
+Thumbs.db
