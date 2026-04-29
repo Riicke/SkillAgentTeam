@@ -1,183 +1,434 @@
 # Tutorial — Agent Team
 
-## How it works (overview)
+This tutorial takes you from zero to a working multi-agent pipeline. By the
+end you will have:
 
-You have a **team of 10 AI agents**. Each one has a specialized role,
-just like a real software company:
+1. Installed the skill in a sample project.
+2. Run a full feature pipeline and inspected every output.
+3. Read the resulting Obsidian vault as a knowledge graph.
+4. Used short pipelines (bug fix, single agent, planning-only) for everyday
+   work.
+5. Customized one agent for a domain-specific need.
+
+If you only want a 30-second overview, read the [README](README.md) instead.
+This document assumes you are willing to spend an hour learning the model.
+
+---
+
+## Table of contents
+
+1. [Mental model](#1-mental-model)
+2. [Prerequisites](#2-prerequisites)
+3. [First-time setup](#3-first-time-setup)
+4. [Walkthrough — your first feature](#4-walkthrough--your-first-feature)
+5. [The five phases in detail](#5-the-five-phases-in-detail)
+6. [Six ways to use the team](#6-six-ways-to-use-the-team)
+7. [Anatomy of `.team/`](#7-anatomy-of-team)
+8. [Reading the Obsidian vault](#8-reading-the-obsidian-vault)
+9. [Customizing agents](#9-customizing-agents)
+10. [Working with non-Claude frameworks](#10-working-with-non-claude-frameworks)
+11. [Troubleshooting](#11-troubleshooting)
+12. [FAQ](#12-faq)
+
+---
+
+## 1. Mental model
+
+Think of Agent Team as a small software company in a box. Each role is
+played by an LLM agent that has been given a focused prompt describing
+its identity, responsibilities, and limits. The Orchestrator is the
+"manager" — it reads what you want, decides which agents are needed,
+spawns them in the right order, and merges their work.
 
 ```
   YOU (project owner)
     │
     ▼
-  ORCHESTRATOR (Tech Lead)  ← the "manager"; runs automatically
+  ORCHESTRATOR (Tech Lead)        ← runs automatically when triggered
     │
-    ├──► Planner (PM)        — defines WHAT to build
-    ├──► Architect (Staff)   — defines HOW to build it
-    ├──► UX Agent (Designer) — defines how the USER interacts
-    ├──► Executor (Dev)      — WRITES the code
-    ├──► QA Agent (Tester)   — TESTS the code
-    ├──► Security (SecEng)   — REVIEWS security
-    ├──► Infra (DevOps)      — handles DEPLOY
-    ├──► Compliance (Legal)  — verifies DATA and rules
-    └──► Context Steward     — DOCUMENTS everything in Obsidian
+    ├──► Planner (PM)             — defines WHAT to build
+    ├──► Architect (Staff)        — defines HOW to build it
+    ├──► UX Agent (Designer)      — defines how the USER interacts
+    ├──► Executor (Engineer)      — WRITES the code
+    ├──► QA Agent (Test Engineer) — TESTS the code
+    ├──► Security (SecEng)        — REVIEWS for vulnerabilities
+    ├──► Infra (DevOps / SRE)     — handles DEPLOY and observability
+    ├──► Compliance (DPO)         — verifies DATA handling
+    └──► Context Steward          — DOCUMENTS everything in Obsidian
 ```
+
+The two key invariants of the system:
+
+- **Within a phase, agents run in parallel.** Between phases, work is
+  sequential — each phase reads what the previous one produced.
+- **Agents communicate through files in `.team/`, not directly.** This
+  makes every decision auditable and resumable across sessions.
 
 ---
 
-## Do they run simultaneously?
+## 2. Prerequisites
 
-**Yes and no.** It depends on the phase:
+Confirm these before starting:
+
+| Tool | Minimum version | Why |
+|------|-----------------|-----|
+| Git | 2.20 | Worktree support (Executor / QA / Infra need this) |
+| Bash | 4.0 | Pipeline scripts target Bash; on Windows use Git Bash or WSL |
+| Claude Code | 1.0 (any recent) | Or Codex CLI, or any framework that can spawn subprocesses with a system prompt |
+| Obsidian | optional | Only needed if you want to navigate `.team/vault/` as a graph |
+
+Confirm git is recent enough:
+
+```bash
+git --version    # should print 2.20 or higher
+```
+
+If you're on Windows, run all `bash <path>` commands from Git Bash, WSL,
+or PowerShell with `bash.exe` available. Native `cmd.exe` will not work
+with the pipeline scripts.
+
+---
+
+## 3. First-time setup
+
+For this tutorial we'll use a fresh project. If you already have one,
+skip to step 2.
+
+### Step 1 — Create or pick a project
+
+```bash
+mkdir my-project && cd my-project
+git init
+echo "# My Project" > README.md
+git add README.md && git commit -m "Initial commit"
+```
+
+### Step 2 — Install the skill
+
+From your project root:
+
+```bash
+git clone https://github.com/Riicke/SkillAgentTeam.git .agent-team \
+  && bash .agent-team/install.sh \
+  && rm -rf .agent-team
+```
+
+That installs the skill for both Claude Code and Codex CLI, and runs
+`init-team.sh` which creates the `.team/` workspace.
+
+You should now see:
 
 ```
-PHASE 1 ─ PLANNING
+my-project/
+├── .claude/skills/agent-team/    ← skill (Claude Code)
+├── .codex-agents/                ← agent prompts (Codex CLI)
+├── AGENTS.md                     ← Codex configuration
+├── .team/                        ← team workspace
+└── README.md                     ← your existing files
+```
+
+### Step 3 — Verify the workspace
+
+```bash
+ls .team/
+```
+
+Expected output:
+
+```
+agents  archive  board.md  context.md  decisions.md  vault
+```
+
+Open `.team/board.md` — it should show all agents in `idle` status.
+
+### Step 4 — Seed `.team/context.md`
+
+The Context Steward will populate this file automatically as the team
+works, but seeding it manually with project basics speeds up the first
+run.
+
+```markdown
+# Project Context
+
+## Overview
+A short description of what this project is.
+
+## Tech Stack
+- Language: (e.g., TypeScript)
+- Framework: (e.g., Express)
+- Database: (e.g., PostgreSQL)
+- Deploy target: (e.g., AWS Lambda)
+
+## Conventions
+- (Any project-specific conventions to surface to agents)
+```
+
+You're now ready to run the team.
+
+---
+
+## 4. Walkthrough — your first feature
+
+Let's add a simple feature end-to-end. Open Claude Code in your project
+and type:
+
+```
+Team, add a /health endpoint that returns { status: "ok" } as JSON.
+Include a test.
+```
+
+Here is what happens behind the scenes:
+
+### Phase 0 — Orchestrator analysis
+
+The Orchestrator (host LLM) reads `SKILL.md` and starts. It identifies:
+
+- **Ambiguities**: Which framework? What HTTP library? What test
+  framework? It will read the codebase first to answer these from
+  context, and ask only if it cannot.
+- **Task type**: New feature → full pipeline.
+- **Agents needed**: Planner, Architect, Executor, QA. UX is skipped
+  (no UI). Security and Compliance optional (the endpoint is trivial).
+
+Output: `.team/agents/orchestrator/analysis.md`.
+
+### Phase 1 — Planning (parallel)
+
+**Planner** writes `.team/agents/planner/requirements.md`:
+
+```markdown
+# Requirements — Health endpoint
+
+## Objective
+Provide a lightweight liveness probe at GET /health.
+
+## Requirements
+### REQ-1: GET /health returns 200 with JSON body
+- Acceptance: response body is `{"status":"ok"}`, content-type is application/json
+- Priority: P0
+
+### REQ-2: Endpoint is unauthenticated
+- Acceptance: works without any auth header
+- Priority: P0
+```
+
+**Architect** writes `.team/agents/architect/design.md`:
+
+```markdown
+# Technical Design — Health endpoint
+
+## Approach
+Add a single route handler. Use existing HTTP framework conventions.
+
+## Components Affected
+| File | Change |
+|------|--------|
+| src/routes/health.ts | create |
+| src/app.ts | modify (register route) |
+
+## ADR-1: Skip authentication
+- Decision: this route is unauthenticated
+- Rationale: liveness probes must not depend on auth subsystems
+```
+
+### Phase 3 — Implementation
+
+**Executor** creates a worktree:
+
+```bash
+.worktrees/agent-executor-health-endpoint/
+   └── (full repo on branch agent/executor/health-endpoint)
+```
+
+It writes the code in that worktree, then writes
+`.team/agents/executor/implementation-notes.md`:
+
+```markdown
+# Implementation Notes — Health endpoint
+
+## Changes Made
+| File | Change | Reason |
+|------|--------|--------|
+| src/routes/health.ts | created | Per design |
+| src/app.ts | modified | Registered new route |
+| tests/health.test.ts | created | Required by Planner REQ-1 |
+
+## How to Verify
+1. Run the test suite
+2. curl http://localhost:3000/health → expect 200, {"status":"ok"}
+```
+
+### Phase 4 — Validation
+
+**QA Agent** runs the tests in its own worktree, writes
+`.team/agents/qa/test-report.md` with verdict PASS.
+
+### Phase 5 — Close
+
+The Orchestrator merges `agent/executor/health-endpoint` into your main
+branch:
+
+```bash
+bash .claude/skills/agent-team/scripts/merge-work.sh agent/executor/health-endpoint --delete
+```
+
+The **Context Steward** updates the Obsidian vault:
+
+- Creates `.team/vault/SPRINT-001-health-endpoint.md`
+- Creates `.team/vault/TASK-001-health-endpoint.md`
+- Creates `.team/vault/ADR-001-skip-auth.md`
+- Creates `.team/vault/IMPL-001-health-endpoint.md`
+- Creates `.team/vault/QA-001-health-endpoint.md`
+- Updates the project's `MOC-<project>.md` index
+- Appends entries to `LOG-planner.md`, `LOG-architect.md`, etc.
+
+You can now commit:
+
+```bash
+git add . && git commit -m "Add /health endpoint"
+```
+
+The pipeline took five files of agent output, one merged branch, and
+roughly a dozen Obsidian notes for what would have been a one-liner
+without the team. For a `/health` endpoint that's overkill — it's an
+illustration. For a real feature like authentication or notifications,
+the audit trail is invaluable.
+
+---
+
+## 5. The five phases in detail
+
+### Phase 1 — Planning (parallel)
+
+```
   ┌─────────────┐   ┌──────────────┐
   │   Planner   │   │  Architect   │   ← run IN PARALLEL
-  │  (the what) │   │  (the how)   │
+  │  (the WHAT) │   │  (the HOW)   │
   └──────┬──────┘   └──────┬───────┘
          │                 │
          └────────┬────────┘
                   ▼
-PHASE 2 ─ DESIGN
+```
+
+**Planner** translates the user's intent into testable requirements with
+explicit acceptance criteria, priorities (P0/P1/P2), and unhappy paths
+for each requirement.
+
+**Architect** reads the codebase, proposes a design, and records
+architecture decisions (ADRs). For every significant decision the
+Architect presents at least two options with trade-offs.
+
+### Phase 2 — Design (UI only)
+
+```
   ┌─────────────┐
-  │  UX Agent   │   ← runs ALONE (needs Phase 1 output)
+  │  UX Agent   │   ← reads Phase 1 output, runs alone
+  │ (the LOOK)  │
   └──────┬──────┘
          ▼
-PHASE 3 ─ IMPLEMENTATION
+```
+
+**UX Agent** defines user flows, states (default, loading, error, empty,
+success), accessibility requirements (WCAG 2.1 AA), and i18n
+considerations. Skipped entirely for non-UI tasks.
+
+### Phase 3 — Implementation
+
+```
   ┌─────────────┐
-  │  Executor   │   ← runs ALONE in an isolated git worktree
-  │   (code)    │
+  │  Executor   │   ← runs alone in an isolated git worktree
+  │   (CODE)    │
   └──────┬──────┘
          ▼
-PHASE 4 ─ VALIDATION
+```
+
+**Executor** creates a worktree, implements the feature per the design,
+writes tests, runs the linter and formatter, and documents what was
+built. The main branch is never touched.
+
+If infrastructure changes are needed, **Infra Agent** runs alongside
+the Executor in its own worktree.
+
+### Phase 4 — Validation (parallel)
+
+```
   ┌──────────┐  ┌──────────┐  ┌────────────┐
-  │ QA Agent │  │ Security │  │ Compliance │  ← run IN PARALLEL
+  │ QA Agent │  │ Security │  │ Compliance │   ← run IN PARALLEL
   └────┬─────┘  └────┬─────┘  └─────┬──────┘
        │              │              │
        └──────────────┼──────────────┘
                       ▼
-PHASE 5 ─ MERGE
+```
+
+**QA** runs the test suite, validates against requirements, and probes
+edge cases. **Security** does an OWASP / STRIDE review on the diff.
+**Compliance** checks PII handling, data retention, and consent
+patterns.
+
+If any agent reports critical findings, the pipeline loops back to the
+Executor before merging.
+
+### Phase 5 — Close
+
+```
   ┌──────────────┐   ┌─────────────────┐
   │ Orchestrator │   │ Context Steward │   ← finalize
-  │   (merge)    │   │  (documentation)│
+  │   (merge)    │   │ (documentation) │
   └──────────────┘   └─────────────────┘
 ```
 
-**Rule**: same phase = parallel. Between phases = sequential.
-
-Each agent **reads the output of the previous ones** and **writes its own**
-for the next.
-
----
-
-## Do they hand off to each other?
-
-Yes. It is a **chain**. Each agent produces a document the next one consumes:
-
-```
-Planner writes → requirements.md
-                      │
-Architect reads requirements, writes → design.md
-                                          │
-UX Agent reads requirements + design, writes → ux-spec.md
-                                                  │
-Executor reads ALL the above, writes → CODE + implementation-notes.md
-                                                         │
-QA Agent reads requirements + code, writes → test-report.md
-                                                      │
-Security reads code, writes → security-report.md
-                                          │
-Orchestrator reads ALL reports → decides merge or fix
-                                          │
-Context Steward reads everything → updates Obsidian vault
-```
-
-All communication happens through **files in the `.team/` folder**:
-
-```
-.team/
-├── board.md           ← Kanban (who is doing what)
-├── agents/
-│   ├── planner/requirements.md       ← Planner output
-│   ├── architect/design.md           ← Architect output
-│   ├── ux/ux-spec.md                 ← UX output
-│   ├── executor/implementation.md    ← Executor output
-│   ├── qa/test-report.md             ← QA output
-│   └── security/security-report.md   ← Security output
-└── vault/                            ← Obsidian vault (permanent docs)
-```
+The Orchestrator merges the Executor's branch (after Validation
+passes), the Context Steward updates `.team/context.md` and the
+Obsidian Maps of Content, and the task is archived.
 
 ---
 
-## Step-by-step start
+## 6. Six ways to use the team
 
-### Step 1 — Initialize the workspace (first time only)
+Not every request needs the full pipeline. Pick the mode that matches
+your task.
 
-```bash
-bash .claude/skills/agent-team/scripts/init-team.sh
-```
+### Mode 1 — Full pipeline (new feature)
 
-This creates the `.team/` folder with the board, Obsidian vault, and a
-log file for each agent.
-
-### Step 2 — Ask Claude something
-
-Open Claude Code in your project and talk normally. The Orchestrator
-activates automatically when it detects certain phrases.
-
-### Step 3 — Track progress in Obsidian
-
-Open `.team/vault/` as a vault in Obsidian and watch the graph grow.
-
----
-
-## 6 ways to use the team
-
-### Mode 1: Full pipeline (new feature)
-
-**When to use**: a new, complex feature with UI.
+**When**: a new, complex feature with UI.
 
 ```
-You say:
-  "Team, I need a notification system. The dashboard should
-   show a badge when a new message arrives."
+You: "Team, I need a notification system. The dashboard should show a
+      badge when a new message arrives."
 
-What happens:
-  1. Orchestrator analyzes → classifies as "New Feature"
-  2. Phase 1: Planner + Architect run in parallel
-  3. Phase 2: UX Agent defines the interface
-  4. Phase 3: Executor implements in an isolated branch
-  5. Phase 4: QA + Security validate in parallel
-  6. Phase 5: Merge + Context Steward documents
+What runs:
+  Phase 1: Planner + Architect
+  Phase 2: UX Agent
+  Phase 3: Executor (worktree)
+  Phase 4: QA + Security + Compliance
+  Phase 5: Merge + Context Steward
 
 Result:
-  - Code implemented in a separate branch
-  - 6+ documents in the Obsidian vault
-  - Everything linked and traceable
+  - Code in a separate branch ready to review
+  - 7+ documents in .team/vault/
+  - Everything cross-linked in Obsidian
 ```
 
-### Mode 2: Short pipeline (bug fix)
+### Mode 2 — Short pipeline (bug fix)
 
-**When to use**: something is broken and needs fixing.
+**When**: something is broken and needs fixing.
 
 ```
-You say:
-  "The login button does not respond to clicks."
+You: "The login button does not respond to clicks."
 
-What happens:
-  1. Orchestrator analyzes → classifies as "Bug Fix"
-  2. SKIPS Phase 1 and 2 (no need to plan a bug fix)
-  3. Phase 3: Executor investigates and fixes
-  4. Phase 4: QA validates the fix
-  5. Phase 5: Merge
+What runs:
+  Phase 3: Executor (investigates and fixes)
+  Phase 4: QA (validates the fix)
+  Phase 5: Merge
 
 Result:
-  - Bug diagnosed and fixed
-  - BUG-xxx.md + QA-xxx.md in the vault
+  - BUG-NNN.md in the vault with diagnosis, root cause, and fix
+  - QA-NNN.md confirming verification
 ```
 
-### Mode 3: Direct agent (shortcut)
+### Mode 3 — Direct agent (shortcut)
 
-**When to use**: you know exactly which agent you want.
+**When**: you know exactly which agent you want.
 
 ```
 You say:                          What runs:
@@ -188,148 +439,345 @@ You say:                          What runs:
   "Plan the auth system"          → Planner + Architect only
 ```
 
-### Mode 4: Refactor
+### Mode 4 — Refactor
 
-**When to use**: code works but needs improvement.
-
-```
-You say:
-  "Refactor BigComponent.tsx — it is too large."
-
-What happens:
-  1. Architect defines how to split it
-  2. Executor implements the refactor
-  3. QA ensures nothing broke
-```
-
-### Mode 5: Security review
-
-**When to use**: before deploy or audit.
+**When**: code works but needs improvement.
 
 ```
-You say:
-  "Team, review the security of the entire runtime."
+You: "Refactor BigComponent.tsx — it is too large."
 
-What happens:
-  1. Security does a full scan
-  2. Compliance checks data and regulations
-  3. (optional) QA tests the fixes
+What runs:
+  Architect (defines the split)
+  Executor  (implements)
+  QA        (ensures no regression)
 ```
 
-### Mode 6: Planning only
+### Mode 5 — Security review
 
-**When to use**: think before building.
+**When**: before deploy, before audit, or after a CVE drops.
 
 ```
-You say:
-  "Plan a plugin system. Do not implement yet, just the plan."
+You: "Team, review the security of the entire runtime."
 
-What happens:
-  1. Planner defines requirements
-  2. Architect defines architecture
-  3. STOP. Nobody implements.
+What runs:
+  Security  (full STRIDE walkthrough on the diff or the whole repo)
+  Compliance (data and regulation check)
+  QA (optional — tests any fixes)
+```
+
+### Mode 6 — Planning only
+
+**When**: think before building.
+
+```
+You: "Plan a plugin system. Don't implement yet."
+
+What runs:
+  Planner   (requirements)
+  Architect (architecture)
+  STOP. Nobody implements.
 
 Result:
-  - TASK-xxx.md + ADR-xxx.md in the vault
-  - Ready for you to review before approving execution
+  - TASK-NNN.md and ADR-NNN.md ready for your review
+  - You decide whether to proceed to Implementation
 ```
 
 ---
 
-## Isolation: how they avoid stepping on each other
-
-### Agents that DO NOT write code
-Planner, Architect, UX, Security, Compliance, Context Steward
-
-They only read code and write documents under `.team/`.
-Each one writes **only in its own folder**. They never touch
-project source files.
-
-### Agents that DO write code
-Executor, QA, Infra
-
-They work in **git worktrees** (isolated copies of the repo):
+## 7. Anatomy of `.team/`
 
 ```
-Main project (main)
-  │
-  ├── .worktrees/
-  │   ├── agent-executor-task-001/    ← Executor works here
-  │   │   └── (full repo copy on branch agent/executor/task-001)
-  │   │
-  │   └── agent-qa-task-001/          ← QA works here
-  │       └── (full repo copy on branch agent/qa/task-001)
-  │
-  └── src/ (untouched until final merge)
+.team/
+├── board.md              ← Kanban (current task, agent statuses, history)
+├── context.md            ← Project knowledge (Context Steward maintains)
+├── decisions.md          ← Append-only architecture decision log
+├── archive/              ← Past task outputs (preserved indefinitely)
+├── agents/               ← Per-agent outputs for the CURRENT task
+│   ├── planner/
+│   ├── architect/
+│   ├── ux/
+│   ├── executor/
+│   ├── qa/
+│   ├── security/
+│   ├── infra/
+│   ├── compliance/
+│   └── context-steward/
+└── vault/                ← Obsidian-compatible knowledge graph
+    ├── MOC-*.md          ← Maps of Content (navigation hubs)
+    ├── LOG-*.md          ← Per-agent changelogs
+    ├── TASK-*.md         ← Requirements (Planner)
+    ├── ADR-*.md          ← Decisions (Architect)
+    ├── UX-*.md           ← UX specs (UX Agent)
+    ├── IMPL-*.md         ← Implementation notes (Executor, features)
+    ├── BUG-*.md          ← Bug fix records (Executor, fixes)
+    ├── QA-*.md           ← Test reports (QA)
+    ├── SEC-*.md          ← Security findings (Security)
+    ├── COMP-*.md         ← Compliance reports (Compliance)
+    ├── INFRA-*.md        ← Infra changes (Infra)
+    ├── CTX-*.md          ← Context notes (Context Steward)
+    └── SPRINT-*.md       ← Per-task overview pages (Orchestrator)
 ```
 
-When everything is validated, the Orchestrator merges the branches.
+Two important properties:
+
+1. **`.team/agents/<role>/` holds the CURRENT task's working notes.**
+   When a new task starts, prior outputs are archived to
+   `.team/archive/TASK-NNN/`. The current state never accumulates
+   indefinitely.
+2. **`.team/vault/` is permanent and grows over time.** It is the
+   long-term memory of the project. Don't archive it.
 
 ---
 
-## Phrases that trigger the skill
+## 8. Reading the Obsidian vault
 
-| Phrase                                   | Action                         |
-|------------------------------------------|--------------------------------|
-| "Team, ..."                              | Full pipeline                  |
-| "We need ..."                            | Full pipeline                  |
-| "Create / Add / Implement [feature]"     | Full pipeline                  |
-| "Fix [bug]"                              | Short pipeline (Executor + QA) |
-| "Run the [agent name]"                   | Direct agent                   |
-| "Review security"                        | Security direct                |
-| "Plan [something]"                       | Planner + Architect            |
-| "Refactor [something]"                   | Architect + Executor + QA      |
-| "Deploy ..."                             | Infra + Executor               |
-| "Compliance review of ..."               | Compliance + Security          |
+Open `.team/vault/` as a vault in Obsidian:
+
+1. Launch Obsidian
+2. *Open folder as vault*
+3. Navigate to `your-project/.team/vault/`
+4. Open the **Graph view** (Ctrl/Cmd + G)
+
+You'll see something like:
+
+```
+              MOC-project
+              /    │    \
+        TASK-001  BUG-001  SEC-001
+         /  │  \             │
+       ADR  UX  IMPL      LOG-security
+              │
+            QA-001
+              │
+         LOG-executor ─── MOC-agents
+```
+
+Each node is a Markdown file. Each edge is a `[[wiki-link]]`. Useful
+entry points:
+
+- **`MOC-<project>.md`** — top-level project hub. Lists all tasks, ADRs,
+  bugs, security findings.
+- **`MOC-agents.md`** — per-agent activity overview with links to each
+  agent's changelog.
+- **`MOC-decisions.md`** — every architecture decision across the
+  project.
+- **`LOG-<role>.md`** — chronological history of what each agent did,
+  newest first.
+
+The vault grows by ~5–10 files per task. After a few weeks of work it
+becomes the most useful project memory you have — searchable, linkable,
+and human-readable.
 
 ---
 
-## What each agent produces in Obsidian
+## 9. Customizing agents
 
-After each task, the vault gains new files:
+Every agent is a plain Markdown file under `.claude/skills/agent-team/agents/`
+(and `.codex-agents/` for Codex CLI). To change a behavior, edit the file.
 
-```
-vault/
-├── SPRINT-001-onboarding.md          ← Orchestrator (task overview)
-├── TASK-001-onboarding.md            ← Planner (requirements)
-├── ADR-001-state-store.md            ← Architect (technical decision)
-├── UX-001-onboarding-flow.md         ← UX Agent (interface spec)
-├── IMPL-001-state-store-impl.md      ← Executor (what was built)
-├── QA-001-onboarding-tests.md        ← QA (test report)
-├── SEC-001-input-validation.md       ← Security (findings)
-├── LOG-planner.md                    ← Planner changelog (updated)
-├── LOG-executor.md                   ← Executor changelog (updated)
-├── MOC-example-app.md                ← Context Steward (project index)
-└── ...
+### Common customizations
+
+**Add a project-specific check** to the Security Agent:
+
+Edit `.claude/skills/agent-team/agents/security-agent.md`. Find the
+"API Security Checklist" section and add a checkbox:
+
+```markdown
+- [ ] Internal API keys never logged at INFO level (project-specific)
 ```
 
-In Obsidian Graph View this looks like:
+**Add a glossary term** to the Context Steward:
 
-```
-         MOC-example-app
-        ╱      │      ╲
-  TASK-001   BUG-001   SEC-001
-   ╱  │  ╲              │
-ADR  UX  IMPL         LOG-security
-         │
-       QA-001
-         │
-    LOG-executor ─── MOC-agents
+Edit `.team/context.md` directly:
+
+```markdown
+## Glossary
+| Term | Meaning in This Project |
+|------|------------------------|
+| Tenant | A customer organization with isolated data |
 ```
 
-Every node is clickable. Every link is traceable.
+**Skip an agent** for your project (e.g., you don't have UI):
+
+You don't need to delete the UX Agent — the Orchestrator already skips
+it for non-UI tasks. If you want to disable it entirely, remove the row
+from the `Task Routing` table in `SKILL.md`.
+
+**Tighten a regex or limit** in a script:
+
+The scripts under `scripts/` are intentionally short. Edit them in
+place if a project-specific constraint applies. After a re-install
+remember `FORCE=1` to overwrite, or your customizations will block
+the install.
+
+### Adding a new agent
+
+If your project needs a role we don't ship (Data Engineer, ML
+Specialist, Localization Lead, etc.):
+
+1. Copy an existing agent file as a template:
+   ```bash
+   cp .claude/skills/agent-team/agents/qa-agent.md .claude/skills/agent-team/agents/data-agent.md
+   ```
+2. Edit Identity, Responsibilities, Boundaries, Input, Output, Rigor
+   Protocol, Working Style, domain section, and Escalation Triggers.
+3. Add the new role to:
+   - `SKILL.md` Agent Roster table
+   - `AGENTS.md` Agent Roles table
+   - `references/communication-protocol.md` directory layout
+   - `init-team.sh` (add `.team/agents/data/` to the `dirs` array)
+   - `references/obsidian-vault.md` filename prefix table
+4. Pick an Obsidian filename prefix (e.g., `DATA-`).
+5. Decide whether the agent writes code (worktree) or only documents.
 
 ---
 
-## Quick FAQ
+## 10. Working with non-Claude frameworks
 
-| Question                              | Answer                                       |
-|---------------------------------------|----------------------------------------------|
-| Do they run simultaneously?           | Yes, within the same phase                   |
-| Do they hand off to each other?       | Yes, via files in `.team/`                   |
-| Do they need git?                     | Yes, for worktrees (the agents that code)    |
-| Can I run a single agent?             | Yes, just ask for it by name                 |
-| Can I run on Codex too?               | Yes, see `references/codex-adapter.md`       |
-| Where do I see everything?            | Obsidian vault at `.team/vault/`             |
-| Do they touch my code directly?       | No, they work on isolated branches           |
-| Who decides the merge?                | The Orchestrator, after QA approves          |
+The agent prompts are framework-agnostic Markdown. To run them under
+another harness:
+
+### Codex CLI
+
+The skill ships with `scripts/run-codex-pipeline.sh` which orchestrates
+the full pipeline. See [`AGENTS.md`](AGENTS.md) for the protocol Codex
+follows.
+
+### LangGraph / CrewAI / AutoGen
+
+Each agent prompt becomes the system prompt of one node in your graph.
+Define the phase pipeline (Planning → Design → Implementation →
+Validation → Close), and use `.team/` as the shared state.
+
+A minimal Python pseudocode:
+
+```python
+from your_framework import Agent
+
+with open("agents/executor.md") as f:
+    executor_prompt = f.read()
+
+executor = Agent(
+    system_prompt=executor_prompt,
+    tools=["read_file", "write_file", "run_shell", "git"],
+    cwd="path/to/project",
+)
+
+result = executor.run(
+    "Task: implement /health. Read .team/agents/architect/design.md."
+)
+```
+
+The full integration guide is in
+[`references/codex-adapter.md`](references/codex-adapter.md).
+
+---
+
+## 11. Troubleshooting
+
+**Claude Code isn't triggering the skill on "team, ...".**
+Confirm `.claude/skills/agent-team/SKILL.md` exists and the frontmatter
+contains `name: agent-team`. The trigger phrases are listed in the
+`description` field. If the description doesn't appear in your message,
+invoke explicitly with `/agent-team`.
+
+**`init-team.sh` fails with "Permission denied".**
+Run with `bash <path>` rather than executing directly:
+
+```bash
+bash .claude/skills/agent-team/scripts/init-team.sh
+```
+
+**`create-worktree.sh` rejects "executor" as the agent name.**
+Names must be lowercase, alphanumeric, and dash-separated (regex
+`^[a-z0-9][a-z0-9-]*$`). This is enforced to prevent path traversal.
+"executor" should pass — if it doesn't, check for invisible characters.
+
+**`merge-work.sh` says the working tree is dirty.**
+Intentional. `git checkout` on a dirty tree can lose work. Either
+`git commit` or `git stash` before re-running.
+
+**Codex CLI rejects the stdin prompt.**
+Older `codex` versions read prompts only from `argv`. Check
+`codex --help`. The pipeline script uses stdin for security; if your
+version doesn't support it, you'll need to upgrade or run agents with
+direct `codex "..."` calls (and accept the shell-injection risk).
+
+**An agent keeps producing identical output.**
+The agent reads stale state from `.team/`. Either:
+
+```bash
+# Archive prior task and start fresh
+mkdir -p .team/archive/$(date +%Y%m%d)
+mv .team/agents/*/* .team/archive/$(date +%Y%m%d)/
+
+# Or run init-team.sh — it preserves files but resets the board
+bash .claude/skills/agent-team/scripts/init-team.sh
+```
+
+**Obsidian graph view shows isolated nodes.**
+You probably opened the project root, not the vault. Open
+`<your-project>/.team/vault/` as the vault.
+
+**A re-install warns about an existing target.**
+Set `FORCE=1`:
+
+```bash
+FORCE=1 bash .agent-team/install.sh
+```
+
+This is a safety guard against silently overwriting customized agent
+prompts. If you've made local edits, copy them out before re-installing.
+
+---
+
+## 12. FAQ
+
+**Do agents run simultaneously?**
+Yes within the same phase, no between phases. Each phase reads the
+output of the previous one.
+
+**Do they hand off to each other?**
+Yes — through files in `.team/`. Agents never call each other directly.
+
+**Do I need git?**
+Yes. Code-writing agents (Executor, QA, Infra) use `git worktree` for
+isolation.
+
+**Can I run only one agent?**
+Yes. Ask for it by name ("Run the Security Agent") or pass it to
+`run-codex-pipeline.sh agent <agent-name> "<task>"`.
+
+**Can I run on Codex CLI?**
+Yes. See [`AGENTS.md`](AGENTS.md) and
+[`references/codex-adapter.md`](references/codex-adapter.md).
+
+**Where do I see what was done?**
+`.team/board.md` for current state, `.team/vault/` for the long-term
+knowledge graph.
+
+**Do agents touch my code directly?**
+No. Code-writing agents work on isolated branches (`agent/<role>/<task-id>`)
+in `.worktrees/`. The Orchestrator merges only after validation passes.
+
+**Who decides the merge?**
+The Orchestrator, after QA / Security / Compliance approve.
+
+**What if QA rejects?**
+The Orchestrator routes the failure back to the Executor with the QA
+report. The Executor fixes; QA re-validates; loop until pass or until
+the Orchestrator escalates to you.
+
+**What if two agents disagree?**
+The Orchestrator reads both outputs, decides based on project
+priorities and the Architect's constraints, records the resolution in
+`.team/decisions.md`, and notifies the affected agents.
+
+**Can I add my own agents?**
+Yes. See section 9 (Customizing agents).
+
+**Will this work for a non-software project?**
+The structure is generic but the agents (Architect, QA, Security,
+Compliance, Infra) are tuned for software. For other domains you would
+need to swap several agents — at that point a custom skill is probably
+cleaner than adapting this one.
