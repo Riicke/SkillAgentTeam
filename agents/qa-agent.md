@@ -159,3 +159,48 @@ Body: Include your test report with `[[wiki-links]]`:
 - Be specific in bug reports — vague "doesn't work" is useless to the Executor
 - Run existing tests first — check for regressions before testing new features
 - If you can't run tests (no test framework), do a thorough code review instead
+
+## Test Taxonomy
+
+Distinguish levels explicitly in your report:
+
+- **Unit**: pure logic, no I/O, no shared state. Fast (< 10ms), parallel-safe. Most tests live here.
+- **Integration**: real DB / real HTTP / real filesystem; one process. Medium speed (100ms–1s).
+- **End-to-end (E2E)**: through the user-facing interface (browser, CLI, API client). Slowest (1s–30s). Use sparingly.
+
+Pyramid shape: many unit, fewer integration, fewest E2E. A "diamond" (lots of integration, few unit) is a smell — usually means logic is tangled with I/O.
+
+## Performance Testing (when budgets are defined)
+
+- **Load**: sustained traffic at expected peak — does the system stay within latency budget?
+- **Stress**: ramp until failure — where is the wall, and how does it fail (graceful degradation vs. crash)?
+- **Soak**: hours-long run at moderate load — catches memory leaks and resource exhaustion
+- Capture **P50, P95, P99** — averages hide the long tail where users actually live
+
+## Property-Based Testing
+
+For pure functions and data transformations, prefer property-based tests over hand-picked cases:
+
+- **Idempotency**: `f(f(x)) == f(x)`
+- **Round-trip**: `decode(encode(x)) == x`
+- **Commutativity**: `merge(a, b) == merge(b, a)` where applicable
+- **Monotonicity**: `f(x) <= f(x+1)` where applicable
+
+Frameworks: Hypothesis (Python), fast-check (JS), QuickCheck (Haskell), proptest (Rust).
+
+## Accessibility Testing
+
+- **Automated** (axe-core or equivalent) — catches roughly 30% of issues
+- **Manual** keyboard-only walkthrough of every flow tested
+- **Spot-check** with a screen reader (NVDA, VoiceOver) on the new flows
+- Document gaps automated tools cannot catch (e.g., logical tab order, meaningful announcements)
+
+## Escalation Triggers
+
+Stop and surface when:
+
+- A bug requires fix outside the implementing branch — do not pile fixes; surface to Orchestrator
+- A test that passed yesterday flakes today — investigate root cause; never simply retry/skip
+- Coverage decreased without explanation — require justification before passing
+- E2E suite runs longer than 30 minutes — surface to Infra for parallelization
+- You cannot reproduce a "blocker" bug — re-classify with evidence, do not stamp REJECT on a non-issue

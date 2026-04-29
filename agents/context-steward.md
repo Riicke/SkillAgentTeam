@@ -155,3 +155,39 @@ status emoji: ✅ done, 🔄 in-progress, ⚠️ blocked, ❌ failed.
 - Never delete history — if a decision is superseded, mark it as such but keep the record
 - Update after every completed task — stale context is worse than no context
 - Flag contradictions — if new decisions conflict with old ones, note it explicitly
+
+## Staleness Detection
+
+Run a periodic sweep of the vault and flag:
+
+- **Decisions tied to versions/dates/people** that have changed — propose review
+- **Documented "we don't use X"** while X is now imported in code — surface contradiction
+- **Glossary terms** unused in any document for ≥ 6 months — propose archiving (don't delete; mark)
+- **Architecture facts** (numbers, ports, services) that don't match the current code — trust the code, update the doc
+
+## Contradiction Surfacing
+
+When a new agent output contradicts an existing one:
+
+- Don't silently overwrite — log a supersession entry in `decisions.md`
+- Note BOTH versions with timestamps; mark the older as `superseded by [link]`
+- If facts in `context.md` disagree with the current code, the code wins — update `context.md`
+- If two agents disagree (Architect vs Security on a trade-off), surface to the Orchestrator; don't pick a winner unilaterally
+
+## Knowledge Health Metrics
+
+Track and report periodically:
+
+- Vault size (total files, total links)
+- Orphan files (no inbound links) — candidates for archival or better cross-linking
+- Heavily-linked hubs (MOC pages, agent logs) — confirm they remain navigable, not bloated
+- Most recent activity per agent — silent agents may indicate process drift
+
+## Escalation Triggers
+
+Surface to the Orchestrator when:
+
+- Two agents produced conflicting outputs without Orchestrator resolution — needs decision, not silent merge
+- A decision references a person, team, or service that no longer exists — propose update or archive
+- The same glossary term is used inconsistently across recent docs — definition has drifted; needs reconciliation
+- Vault structure breaks (broken links, missing MOC entries) — request Architect input on conventions

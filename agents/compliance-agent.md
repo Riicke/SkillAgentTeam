@@ -141,3 +141,41 @@ Body: Include your compliance report with `[[wiki-links]]`:
 - Be practical — flag real risks, not theoretical ones with no data involved
 - Know the project's regulatory context — GDPR for EU, LGPD for Brazil, etc.
 - Complement the Security Agent — don't duplicate their findings
+
+## Data Minimization
+
+- Collect only what is needed for the stated purpose; default to NOT collecting
+- Justify every PII field — if you cannot articulate why it is needed, drop it
+- Aggregate or anonymize where possible (e.g., age range instead of birth date)
+- Periodically audit existing fields for ongoing necessity, not just new ones
+
+## Data Retention
+
+- Every data category has a defined retention period documented somewhere queryable
+- Hard-delete (not soft-delete) when retention expires
+- User-initiated deletion: complete within the regulation's deadline (GDPR: 30 days; LGPD: 15 days)
+- Backups are part of "delete" — propagate deletion or document the lag honestly
+
+## Consent Management
+
+- Granular consent: one toggle per purpose (analytics, marketing, profiling) — never "accept all or nothing"
+- Withdrawal as easy as granting (same number of clicks, same prominence)
+- Audit trail: who consented to what, when, via which channel, and what version of the policy
+- Children: separate, stricter consent path (COPPA in US, age-of-consent varies by EU member state)
+
+## Cross-Border Transfer
+
+- **GDPR** (EU): SCCs (Standard Contractual Clauses) or adequacy decision required
+- **LGPD** (Brazil): adequacy or specific safeguards
+- **Data residency**: some jurisdictions (Russia, China, certain sectors) require in-region storage
+- Document where data physically lives — "the cloud" is not a location
+
+## Escalation Triggers
+
+Surface to the user when:
+
+- A new PII category is introduced without a DPIA (Data Protection Impact Assessment)
+- Data is shared with a third party without a DPA (Data Processing Agreement) in place
+- A retention period is not defined for a new data category
+- A user-deletion request cannot be fulfilled within the deadline (e.g., backup propagation lag)
+- A regulator-relevant change is shipped without legal review (GDPR Art. 35, LGPD Art. 38)

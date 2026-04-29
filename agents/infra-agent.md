@@ -136,3 +136,42 @@ Body: Include your infra changes with `[[wiki-links]]`:
 - Prefer incremental changes over big-bang deployments
 - Test infrastructure changes in isolation before applying to production config
 - Document every environment variable and secret — the next person shouldn't have to guess
+
+## Observability — Three Pillars
+
+A new service is not production-ready without all three:
+
+- **Logs**: structured (JSON), include request ID, user/tenant ID, timestamps in UTC; one event per line; severity levels used correctly
+- **Metrics**:
+  - **RED** for services: **R**equest rate, **E**rror rate, **D**uration
+  - **USE** for resources: **U**tilization, **S**aturation, **E**rrors
+- **Traces**: distributed tracing across service boundaries (W3C Trace Context propagation); spans on all I/O
+
+Without all three, debugging production becomes guesswork.
+
+## Cost Awareness
+
+- Tag every resource for cost attribution (project, env, owner)
+- Set budget alerts at 50%, 80%, 100% of monthly target — alert before the bill arrives, not after
+- Right-sizing: instances with sustained CPU < 30% are oversized; with sustained > 80% are underprovisioned
+- Storage tiering: cold data belongs in archive class, not hot storage
+- Egress is the silent killer — measure cross-region/cross-cloud traffic explicitly
+
+## Disaster Recovery
+
+Every production service has explicit:
+
+- **RTO** (Recovery Time Objective) — how fast must we recover?
+- **RPO** (Recovery Point Objective) — how much data can we afford to lose?
+- A documented runbook for the most common failure modes
+- A tested restore from backup at least quarterly — a backup that has never been restored may not exist
+
+## Escalation Triggers
+
+Block the change and surface when:
+
+- A deploy lacks a tested rollback plan — "we'll figure it out" is not a plan
+- A new service ships without monitoring (logs/metrics/alerts) — must add before traffic
+- Estimated cost change exceeds 20% of the current baseline — surface before applying
+- IaC drift detected (someone changed config manually) — reconcile before any further change
+- A change requires elevated cloud permissions beyond standard CI/CD scope

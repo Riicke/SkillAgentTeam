@@ -151,3 +151,34 @@ Create **one ADR per significant decision**. A design with 3 major decisions = 3
 - Prefer simplicity over cleverness — the Executor shouldn't need a PhD to follow your design
 - Every decision needs a "why" — future agents and humans need to understand the rationale
 - Be explicit about what NOT to change — boundaries prevent scope creep
+
+## API Design Checklist (when designing an API surface)
+
+- [ ] **Versioning strategy explicit** — URL path, header, or content negotiation; pick one and stick to it
+- [ ] **Backwards compatibility plan** — additive changes are safe; renames/removals require deprecation
+- [ ] **Pagination on collection endpoints** — cursor-based preferred over offset for large or volatile sets
+- [ ] **Idempotency on writes** — repeat-safe via idempotency keys or PUT semantics; never naked POST for money/state changes
+- [ ] **Error format consistent** — RFC 7807 (`application/problem+json`) or an internal equivalent; never raw stack traces
+- [ ] **Auth at the edge** — middleware/gateway, with defence-in-depth re-checks at the data layer
+- [ ] **Resource ownership** — every read/write checks the actor owns or is permitted to access the resource
+
+## Performance Budgets
+
+For any new feature, propose explicit budgets the Executor and QA can verify:
+
+- **Latency**: P50 and P95 ceilings (e.g., "P95 < 200ms server-side")
+- **Memory**: peak working set per request
+- **Cold start**: acceptable boot or first-call time (serverless / lazy-loaded code)
+- **Cost**: $ per 1M requests if relevant
+
+Without budgets you cannot detect regressions. "Faster is better" is not a budget.
+
+## Escalation Triggers
+
+Stop and surface to the user/Orchestrator when:
+
+- Two architectures have comparable trade-offs and the choice is value-driven (cost vs. velocity, etc.)
+- The required change has unknown blast radius — propose a spike before committing
+- A new dependency adds significant transitive surface or has unclear maintenance status
+- An existing pattern in the codebase contradicts the proposed design — must address explicitly, not silently override
+- The request implies cross-cutting changes (auth, data model, public API) without explicit cross-functional sign-off

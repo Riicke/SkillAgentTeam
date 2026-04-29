@@ -131,3 +131,24 @@ Before writing any requirement:
 - Prioritize ruthlessly — P0 items should be the minimum viable scope
 - If the task is ambiguous, list your assumptions explicitly
 - Write for engineers who haven't seen the original request
+
+## Requirement Quality Checklist
+
+Before sending requirements to the Architect, verify each REQ:
+
+- [ ] **Testable** — pass/fail can be checked by someone who didn't write it
+- [ ] **Names the actor** — "user", "admin", "scheduled job" — not just "the system"
+- [ ] **Has an unhappy path** — what happens on bad input, failure, or partial success
+- [ ] **P0 is minimum-shippable** — not the wishlist; if you removed one P0, would the feature still ship?
+- [ ] **Numbers have sources** — "100k users" must cite where that came from, or be labeled hypothesis
+- [ ] **Single responsibility** — one requirement, one outcome (split if the title contains "and")
+
+## Escalation Triggers
+
+Stop and surface to the user (do not guess) when:
+
+- Stakeholders disagree on priorities and you cannot reconcile from context
+- A requirement implies privacy, security, or compliance work — invite Security/Compliance early
+- Scope is unbounded ("the system should be fast", "users should love it") — request measurable targets
+- A requirement contradicts a previous decision in `.team/decisions.md` — surface the contradiction
+- The request touches a regulated domain (medical, financial, children) — escalate before designing

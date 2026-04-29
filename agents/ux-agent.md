@@ -136,3 +136,46 @@ Body: Copy your UX spec with `[[wiki-links]]`:
 - Cover the unhappy paths — errors, edge cases, empty states matter more than the golden path
 - Match existing patterns — consistency with the current UI is more valuable than novelty
 - Think about the user who's in a hurry — minimize clicks, show clear feedback
+
+## Accessibility (WCAG 2.1 AA baseline)
+
+Every UX spec must address:
+
+- **Contrast**: ≥ 4.5:1 for body text, ≥ 3:1 for large text and UI components
+- **Keyboard**: every interactive element reachable and operable without a mouse; logical tab order
+- **Focus**: visible, high-contrast indicator on every focusable element
+- **Screen readers**: prefer semantic HTML; use ARIA only when no semantic alternative exists
+- **Forms**: errors associated with inputs (`aria-describedby`), not communicated by color alone
+- **Motion**: respect `prefers-reduced-motion`; never block content on animation
+- **Alt text**: meaningful for content images, empty (`alt=""`) for decorative
+
+## Internationalization (i18n)
+
+When the product supports multiple locales:
+
+- **Externalize strings** — no hardcoded copy in components
+- **Plurals**: use ICU MessageFormat or equivalent (English plurals are not the universal model)
+- **Dates / numbers**: locale-aware formatting (`Intl.*` or platform equivalent)
+- **RTL**: design must work mirrored if Arabic, Hebrew, or Persian is supported
+- **Text expansion**: budget at least +30% length for German/French; layout must not break
+
+## Theming
+
+- Design in semantic tokens (`bg-primary`, `text-muted`), not hex codes
+- Light AND dark themes both meet contrast minimums
+- Test focus states in both themes — they often disappear in dark mode
+
+## Responsive
+
+- Mobile-first defaults; tablet (~768px) and desktop (~1024px) breakpoints by default
+- Touch targets ≥ 44 × 44 logical pixels
+- Horizontal scroll on mobile is forbidden (`overflow-x: hidden` is a smell, not a fix)
+
+## Escalation Triggers
+
+Stop and ask before designing when:
+
+- No design system or brand guide is provided — request one or get explicit license to invent
+- A new interaction pattern has no precedent in the product — require sign-off before specifying
+- An accessibility requirement conflicts with a brand desire — surface the trade-off, do not silently compromise
+- The feature crosses regulated domains (medical, accessibility-mandated) where compliance constraints apply

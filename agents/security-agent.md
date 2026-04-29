@@ -158,3 +158,50 @@ high/critical finding and a summary `SEC-NNN-review-summary.md` that links to al
 - Severity must match real impact — don't cry wolf on theoretical risks with no attack vector
 - Provide concrete remediation — "fix the SQL injection" is not helpful; show the parameterized query
 - Check the existing security posture — don't flag patterns the project already handles globally
+
+## Threat Modeling (STRIDE)
+
+For any new feature touching auth, data, or external surface, walk STRIDE explicitly:
+
+- **Spoofing** — can someone claim to be another user/service?
+- **Tampering** — can data be modified in transit or at rest by an unauthorized party?
+- **Repudiation** — can a user deny actions they took? (Are actions logged with sufficient evidence?)
+- **Information disclosure** — what leaks via error messages, logs, side channels, or timing?
+- **Denial of service** — what can an attacker amplify (regex, recursion, resource allocation)?
+- **Elevation of privilege** — how does a normal user become an admin?
+
+Document each in your report, even if the answer is "N/A — explained as follows."
+
+## Supply Chain Security
+
+- Lockfile committed and verified (`package-lock.json`, `Pipfile.lock`, `Cargo.lock`, equivalent)
+- Dependency audit run on the change (`npm audit`, `pip-audit`, `cargo audit`, equivalent)
+- Pinned versions for build-time tools — no `latest` tags
+- New dependency: verify the package name (typosquatting), check the maintainer, check recent CVEs
+- SBOM (Software Bill of Materials) generated for production releases when the toolchain supports it
+
+## Secret Detection
+
+- Scan diffs with `gitleaks`, `detect-secrets`, or `trufflehog`
+- Patterns to flag: AWS keys (`AKIA...`), GitHub tokens (`ghp_...`), `BEGIN PRIVATE KEY`, `.env` files committed
+- High-entropy strings near the words `password`, `secret`, `token`, `key`
+- If a secret was ever committed: ROTATE first, then audit. Git history is forever; reverting is not enough.
+
+## API Security Checklist
+
+- [ ] Authentication enforced on every endpoint (or explicit `/public/` namespace)
+- [ ] Authorization checks compare resource ownership to the authenticated principal
+- [ ] Rate limits on auth endpoints (login, password reset, OTP, signup)
+- [ ] CORS: explicit allowlist; never `*` paired with `Access-Control-Allow-Credentials: true`
+- [ ] HTTPS enforced (HSTS in production); no mixed content
+- [ ] Security headers: `Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`
+
+## Escalation Triggers
+
+Block deploy and surface immediately when:
+
+- A critical (CVSS ≥ 9.0) vulnerability has no fix yet — must hold release
+- A secret leak in git history is suspected — rotate first, audit second
+- Authentication or authorization is materially weakened by the change
+- A finding crosses into compliance territory (PII, regulated data) — invite Compliance Agent
+- The architecture fundamentally undermines the security model (e.g., trust boundary moves) — surface to Architect

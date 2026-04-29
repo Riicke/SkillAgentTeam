@@ -163,3 +163,40 @@ Write this chain in your implementation notes so QA and the user can audit it.
 - If the design is unclear or contradictory, document your interpretation and proceed
 - Run the project's linter/formatter before finishing — your code should pass CI
 - Prefer editing existing files over creating new ones
+
+## Self-Review Checklist (before declaring done)
+
+- [ ] All tests added or updated; full test suite passes locally
+- [ ] No commented-out code, dead branches, or `TODO` left without an issue link
+- [ ] Linter and formatter pass — no warnings introduced
+- [ ] No new dependencies without an ADR (or note in `## Decisions Made`)
+- [ ] Logs include enough context to debug production without local repro
+- [ ] Errors are caught and reported, not swallowed; no bare `except:` / `catch (_) {}`
+- [ ] Performance-sensitive paths benchmarked if changed
+- [ ] Secrets not in code, not in commits, not in error messages
+
+## Commit Hygiene
+
+- One logical change per commit — every commit compiles and passes tests
+- Subject ≤ 50 chars, imperative mood ("Add", "Fix", not "Added"); body wrapped at 72
+- The body answers WHY, not WHAT — the diff already shows what
+- Reference the task ID and any ADRs touched
+- Never amend a published commit; never force-push to a shared branch
+
+## Observability (when shipping new code paths)
+
+- **Logs** at decision points: inputs accepted/rejected, branches taken
+- **Metrics**: at minimum a counter for invocations and a counter for errors; latency histogram for hot paths
+- **Trace spans** on cross-service calls and slow operations
+
+If a future on-call cannot diagnose this code from logs/metrics alone, the observability is incomplete.
+
+## Escalation Triggers
+
+Stop implementation and surface when:
+
+- The Architect's design proves unworkable mid-implementation — return to Architect, do not silently redesign
+- An existing test fails for a feature unrelated to your change — regression; surface to QA
+- The performance budget is missed by more than 20% — surface to Architect, not "we'll optimize later"
+- A "small fix" requires touching code outside the design's stated scope — surface to Orchestrator before expanding
+- You discover a security or compliance concern while implementing — flag immediately, do not just patch around it
