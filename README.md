@@ -379,6 +379,53 @@ Architectural and project decisions are recorded append-only in `.team/decisions
 
 ---
 
+## Updates
+
+The skill ships with a self-update mechanism that always asks before changing anything.
+
+### Check for updates
+
+```bash
+bash .claude/skills/agent-team/scripts/check-updates.sh
+```
+
+Non-interactive. Compares the local [`VERSION`](VERSION) file with the latest GitHub release (or, if none exist yet, the latest tag) and prints one of:
+
+- `Agent Team is up to date (v0.1.0).`
+- `Agent Team update available: v0.1.0 -> v0.2.0`
+
+Results are cached in `.team/.last-update-check` for 24 hours, so it is cheap to call repeatedly. The check fails silently (exit `0`, no error spam) when `curl` is unavailable or there is no network — your work is never blocked.
+
+| Flag | Effect |
+|------|--------|
+| `--force` | Skip the cache and hit the API |
+| `--quiet` | Print nothing when up to date (only on update available) |
+
+### Apply an update
+
+```bash
+bash .claude/skills/agent-team/scripts/update.sh
+```
+
+Interactive. Runs the check, points at the GitHub releases page so you can read the changelog, prompts `y/N`, and on confirmation re-runs `install.sh` with `FORCE=1`. Use `--yes` to skip the prompt or `--check` to run the check only.
+
+> **Local edits to agent prompts under `.claude/skills/agent-team/` or `.codex-agents/` are overwritten on update.** Copy them out first if you've customized.
+
+### Automatic notification
+
+Both orchestrators run `check-updates.sh --quiet` at the start of every task:
+
+- **Claude Code** — see [`SKILL.md`](SKILL.md) (the "Update check" section)
+- **Codex CLI** — see [`AGENTS.md`](AGENTS.md) (above the workflow checklist)
+
+If an update is available, the orchestrator surfaces it to you once before starting work and offers to run `update.sh`. The check is silent when you're up to date and never blocks the pipeline if it fails.
+
+### Pinning to a version
+
+To stay on a specific version, edit `.claude/skills/agent-team/VERSION` to whatever you want and the check will compare against that. The auto-update will still offer newer releases — set `SKIP_UPDATE_CHECK=1` in your environment if you want the orchestrator to ignore them entirely (the orchestrator should respect this; if you want hard enforcement, remove the `check-updates.sh` invocation from `SKILL.md` / `AGENTS.md`).
+
+---
+
 ## Security model
 
 The scripts that an LLM agent invokes on your behalf were hardened to close common foot-guns:

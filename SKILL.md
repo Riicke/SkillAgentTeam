@@ -29,6 +29,24 @@ bash <skill-path>/scripts/init-team.sh
 This creates the `.team/` directory structure that agents use to communicate.
 If `.team/` already exists, it's preserved — the script is idempotent.
 
+## Update check (run at the start of every task)
+
+Before Phase 0, run a non-blocking version check:
+
+```bash
+bash <skill-path>/scripts/check-updates.sh --quiet
+```
+
+The script is silent when up to date and prints a notice when an update is
+available. It is cached for 24 hours and fails silently when there is no
+network or `curl` available, so it never blocks the user.
+
+If the script prints an "update available" notice, surface it to the user
+**once** at the start of your reply, in one short sentence, and offer to run
+`bash <skill-path>/scripts/update.sh`. Do not run the update yourself — it
+overwrites local edits and must be confirmed by the user. Then continue with
+Phase 0 normally.
+
 ## Task Analysis
 
 When you receive a task, determine which agents are needed. Not every task

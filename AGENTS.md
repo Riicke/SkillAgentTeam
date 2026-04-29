@@ -30,7 +30,21 @@ This file is the contract Codex follows on every invocation.
 
 ## When given a development task
 
-Follow this checklist before producing any output:
+Before the checklist below, run a non-blocking update check:
+
+```bash
+bash .claude/skills/agent-team/scripts/check-updates.sh --quiet
+```
+
+The script is silent when up to date and prints a notice if a new release is
+available. It caches for 24 hours and fails silently without network or
+`curl`. If it prints an "update available" notice, surface it to the user
+once at the top of your reply and offer
+`bash .claude/skills/agent-team/scripts/update.sh`. Never run the update
+yourself — it overwrites local edits and must be confirmed by the user.
+Continue with the checklist regardless of the result.
+
+Then follow this checklist before producing any output:
 
 1. **Read the board.** Open `.team/board.md`. It is the kanban state for the
    current task — what is in progress, who has finished, what is blocking.

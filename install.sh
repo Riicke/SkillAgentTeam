@@ -66,8 +66,9 @@ install_claude() {
   mkdir -p "$dest"
 
   # Copy specific subtrees, not the whole repo.
-  cp "${SCRIPT_DIR}/SKILL.md"   "${dest}/SKILL.md"
-  cp "${SCRIPT_DIR}/AGENTS.md"  "${dest}/AGENTS.md"
+  cp "${SCRIPT_DIR}/SKILL.md"    "${dest}/SKILL.md"
+  cp "${SCRIPT_DIR}/AGENTS.md"   "${dest}/AGENTS.md"
+  cp "${SCRIPT_DIR}/VERSION"     "${dest}/VERSION"
   cp "${SCRIPT_DIR}/TUTORIAL.md" "${dest}/TUTORIAL.md" 2>/dev/null || true
   cp -r "${SCRIPT_DIR}/agents"     "${dest}/agents"
   cp -r "${SCRIPT_DIR}/references" "${dest}/references"
