@@ -102,7 +102,10 @@ fi
 
 # Create Obsidian vault seed files if vault is empty
 if [ ! -f "${TEAM_DIR}/vault/MOC-projects.md" ]; then
-  PROJECT_SLUG=$(basename "$(pwd)" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g')
+  # Sanitize: lowercase, collapse non-alnum runs to a single dash,
+  # trim leading/trailing dashes, fall back to "project" if empty.
+  PROJECT_SLUG=$(basename "$(pwd)" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')
+  [ -z "$PROJECT_SLUG" ] && PROJECT_SLUG="project"
 
   cat > "${TEAM_DIR}/vault/MOC-projects.md" << EOF
 ---
@@ -207,14 +210,17 @@ EOF
   echo "  Created Obsidian vault with MOC pages and agent logs"
 fi
 
-# Add .team to .gitignore if not already there
+# Add .team to .gitignore if not already there. Use -F (fixed-string) and -x
+# (whole-line match) so the existing-line test is exact and not regex-based.
+# Prepend a newline when appending so we never glue onto a final line that
+# was missing its trailing newline.
 if [ -f ".gitignore" ]; then
-  if ! grep -q "^\.team/" ".gitignore" 2>/dev/null; then
-    echo ".team/" >> ".gitignore"
+  if ! grep -qxF ".team/" ".gitignore"; then
+    printf '\n.team/\n' >> ".gitignore"
     echo "  Added .team/ to .gitignore"
   fi
 else
-  echo ".team/" > ".gitignore"
+  printf '.team/\n' > ".gitignore"
   echo "  Created .gitignore with .team/"
 fi
 

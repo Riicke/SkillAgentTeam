@@ -60,8 +60,7 @@ Brief description of what this project is and its current state.
 ## Glossary
 | Term | Meaning in This Project |
 |------|------------------------|
-| Avatar | ... |
-| Runtime | ... |
+| {term} | {project-specific definition} |
 
 ## Known Issues / Tech Debt
 - [Issue]: context and priority
@@ -130,8 +129,8 @@ status emoji: ✅ done, 🔄 in-progress, ⚠️ blocked, ❌ failed.
 ## Rigor Protocol
 
 1. **Label confidence in documented knowledge**:
-   - **Fact**: "We use Zustand for state" (verified from code)
-   - **Inference**: "The notification system should use the same store pattern" (logical)
+   - **Fact**: "The project uses the state library declared in package.json" (verified from code)
+   - **Inference**: "New features should follow the same store pattern" (logical)
    - **Hypothesis**: "This architecture will scale to 50 agents" (untested)
    Future agents reading the context need to know what to trust.
 

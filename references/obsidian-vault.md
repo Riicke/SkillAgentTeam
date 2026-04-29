@@ -3,23 +3,26 @@
 All agent outputs live in a **single flat folder** (`.team/vault/`) so Obsidian's
 graph view connects everything into a knowledge brain.
 
+> All slugs in this document use `example-app` as a placeholder for the project
+> name. Replace with your project slug.
+
 ## File Naming
 
 Every file follows the pattern: `PREFIX-NNN-slug.md`
 
 | Agent           | Prefix  | Example                              |
 |-----------------|---------|--------------------------------------|
-| Planner         | `TASK`  | `TASK-001-notification-system.md`    |
-| Architect       | `ADR`   | `ADR-001-zustand-store.md`           |
-| UX Agent        | `UX`    | `UX-001-notification-bubble.md`      |
-| Executor        | `IMPL`  | `IMPL-001-notification-store.md`     |
-| QA Agent        | `QA`    | `QA-001-notification-tests.md`       |
-| Security Agent  | `SEC`   | `SEC-001-cors-wildcard.md`           |
+| Planner         | `TASK`  | `TASK-001-onboarding-flow.md`    |
+| Architect       | `ADR`   | `ADR-001-state-store.md`           |
+| UX Agent        | `UX`    | `UX-001-onboarding-flow.md`      |
+| Executor        | `IMPL`  | `IMPL-001-state-store-impl.md`     |
+| QA Agent        | `QA`    | `QA-001-onboarding-tests.md`       |
+| Security Agent  | `SEC`   | `SEC-001-open-cors-policy.md`           |
 | Infra Agent     | `INFRA` | `INFRA-001-ci-pipeline.md`           |
 | Compliance      | `COMP`  | `COMP-001-pii-audit.md`             |
 | Context Steward | `CTX`   | `CTX-001-project-overview.md`        |
 | Orchestrator    | `SPRINT`| `SPRINT-001-auth-feature.md`         |
-| Bug reports     | `BUG`   | `BUG-001-click-handler.md`           |
+| Bug reports     | `BUG`   | `BUG-001-login-handler.md`           |
 
 **Numbering**: IDs are global and auto-increment across the whole vault.
 Check the highest existing number before creating a new file.
@@ -33,17 +36,17 @@ Every file starts with YAML frontmatter for Obsidian metadata and filtering:
 id: TASK-001
 agent: planner
 date: 2026-04-01
-project: avatar-hq
+project: example-app
 task: TASK-001
 status: done
 tags:
   - agent/planner
   - type/task
-  - project/avatar-hq
+  - project/example-app
   - sprint/001
 related:
-  - "[[ADR-001-zustand-store]]"
-  - "[[UX-001-notification-bubble]]"
+  - "[[ADR-001-state-store]]"
+  - "[[UX-001-onboarding-flow]]"
 ---
 ```
 
@@ -60,7 +63,7 @@ related:
 ```
 agent/          → agent/planner, agent/executor, agent/qa ...
 type/           → type/task, type/adr, type/implementation, type/bug, type/security ...
-project/        → project/avatar-hq, project/my-app ...
+project/        → project/example-app, project/my-app ...
 sprint/         → sprint/001, sprint/002 ...
 status/         → status/done, status/blocked ...
 priority/       → priority/p0, priority/p1, priority/p2 ...
@@ -72,7 +75,7 @@ Use Obsidian `[[wiki-links]]` to connect documents. This is what builds the grap
 
 ### Mandatory Links
 Every document MUST link to:
-1. **Its parent task**: `[[TASK-001-notification-system]]`
+1. **Its parent task**: `[[TASK-001-onboarding-flow]]`
 2. **The agent's changelog**: `[[LOG-executor]]`
 3. **Documents it depends on** (inputs it read)
 4. **Documents that depend on it** (outputs it enables)
@@ -80,14 +83,14 @@ Every document MUST link to:
 ### Link Patterns
 
 ```markdown
-> 🤖 Created by [[LOG-executor|Executor Agent]] for [[TASK-001-notification-system]]
-> Based on [[ADR-001-zustand-store]] | Validated by [[QA-001-notification-tests]]
+> 🤖 Created by [[LOG-executor|Executor Agent]] for [[TASK-001-onboarding-flow]]
+> Based on [[ADR-001-state-store]] | Validated by [[QA-001-onboarding-tests]]
 ```
 
 Use `[[FILE|Display Text]]` for readable links:
 - `[[LOG-planner|Planner Agent]]`
-- `[[TASK-001-notification-system|Task #001]]`
-- `[[ADR-001-zustand-store|ADR: Zustand Store]]`
+- `[[TASK-001-onboarding-flow|Task #001]]`
+- `[[ADR-001-state-store|ADR: State Store]]`
 
 ### Cross-Reference Section
 
@@ -98,9 +101,9 @@ Every document ends with a `## Related` section:
 
 | Relation    | Link                                  |
 |-------------|---------------------------------------|
-| Task        | [[TASK-001-notification-system]]      |
-| Depends on  | [[ADR-001-zustand-store]]             |
-| Enables     | [[QA-001-notification-tests]]         |
+| Task        | [[TASK-001-onboarding-flow]]      |
+| Depends on  | [[ADR-001-state-store]]             |
+| Enables     | [[QA-001-onboarding-tests]]         |
 | Agent Log   | [[LOG-executor]]                      |
 | Sprint      | [[SPRINT-001-auth-feature]]           |
 ```
@@ -120,14 +123,14 @@ tags:
 
 # Executor Agent — Changelog
 
-## 2026-04-01 — [[TASK-001-notification-system|Notification System]]
-- Created [[IMPL-001-notification-store]]
+## 2026-04-01 — [[TASK-001-onboarding-flow|Notification System]]
+- Created [[IMPL-001-state-store-impl]]
 - Modified: `src/store/useNotificationStore.ts`, `src/office/AgentAvatar.tsx`
 - Branch: `agent/executor/task-001`
 - Status: ✅ done
 
-## 2026-04-01 — [[BUG-001-click-handler|Click Handler Bug]]
-- Created [[IMPL-002-avatar-click-handler]]
+## 2026-04-01 — [[BUG-001-login-handler|Click Handler Bug]]
+- Created [[IMPL-002-avatar-login-handler]]
 - Found 3 bugs, proposed fixes for all
 - Branch: `agent/executor/bug-001`
 - Status: ✅ done
@@ -143,29 +146,29 @@ The Context Steward creates MOC pages that serve as navigation hubs:
 ```markdown
 # Projects
 
-## [[MOC-avatar-hq|AvatarHQ]]
+## [[MOC-example-app|example-app]]
 - Status: active
 - Agents: 5 active
-- Recent: [[TASK-001-notification-system]], [[BUG-001-click-handler]]
+- Recent: [[TASK-001-onboarding-flow]], [[BUG-001-login-handler]]
 ```
 
 ### `MOC-{project}.md` — Project overview
 ```markdown
-# AvatarHQ — Map of Content
+# example-app — Map of Content
 
 ## Tasks
-- [[TASK-001-notification-system]] — ✅ done
+- [[TASK-001-onboarding-flow]] — ✅ done
 - [[TASK-002-auth-system]] — 🔄 in-progress
 
 ## Architecture Decisions
-- [[ADR-001-zustand-store]] — active
+- [[ADR-001-state-store]] — active
 - [[ADR-002-websocket-auth]] — active
 
 ## Bugs
-- [[BUG-001-click-handler]] — ✅ fixed
+- [[BUG-001-login-handler]] — ✅ fixed
 
 ## Security
-- [[SEC-001-cors-wildcard]] — ⚠️ open
+- [[SEC-001-open-cors-policy]] — ⚠️ open
 ```
 
 ### `MOC-agents.md` — All agent activity
@@ -188,12 +191,12 @@ The Orchestrator creates a sprint page for each coordinated task:
 id: SPRINT-001
 agent: orchestrator
 date: 2026-04-01
-project: avatar-hq
+project: example-app
 status: done
 tags:
   - agent/orchestrator
   - type/sprint
-  - project/avatar-hq
+  - project/example-app
 ---
 
 # SPRINT-001: Notification System
@@ -201,11 +204,11 @@ tags:
 ## Pipeline
 | Phase | Agent | Status | Output |
 |-------|-------|--------|--------|
-| Planning | [[LOG-planner\|Planner]] | ✅ | [[TASK-001-notification-system]] |
-| Architecture | [[LOG-architect\|Architect]] | ✅ | [[ADR-001-zustand-store]] |
-| Design | [[LOG-ux\|UX Agent]] | ✅ | [[UX-001-notification-bubble]] |
-| Implementation | [[LOG-executor\|Executor]] | ✅ | [[IMPL-001-notification-store]] |
-| QA | [[LOG-qa\|QA Agent]] | ✅ | [[QA-001-notification-tests]] |
+| Planning | [[LOG-planner\|Planner]] | ✅ | [[TASK-001-onboarding-flow]] |
+| Architecture | [[LOG-architect\|Architect]] | ✅ | [[ADR-001-state-store]] |
+| Design | [[LOG-ux\|UX Agent]] | ✅ | [[UX-001-onboarding-flow]] |
+| Implementation | [[LOG-executor\|Executor]] | ✅ | [[IMPL-001-state-store-impl]] |
+| QA | [[LOG-qa\|QA Agent]] | ✅ | [[QA-001-onboarding-tests]] |
 
 ## Timeline
 - 2026-04-01 09:00 — Sprint created

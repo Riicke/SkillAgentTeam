@@ -2,13 +2,20 @@
 # Run the agent-team pipeline using Codex CLI.
 #
 # Usage:
-#   ./run-codex-pipeline.sh "feature" "Adicionar sistema de notificações"
-#   ./run-codex-pipeline.sh "bugfix"  "O botão de fala não responde"
-#   ./run-codex-pipeline.sh "security" "Revisar segurança do runtime"
-#   ./run-codex-pipeline.sh "plan"    "Planejar sistema de plugins"
-#   ./run-codex-pipeline.sh "agent"   "security" "Revisar o runtime"
+#   ./run-codex-pipeline.sh "feature"  "Add notification system"
+#   ./run-codex-pipeline.sh "bugfix"   "Login button does not respond"
+#   ./run-codex-pipeline.sh "security" "Review runtime security"
+#   ./run-codex-pipeline.sh "refactor" "Split BigComponent.tsx"
+#   ./run-codex-pipeline.sh "plan"     "Plan a plugin system"
+#   ./run-codex-pipeline.sh "agent"    "security-agent" "Audit the API"
 #
-# Requires: codex CLI installed and authenticated
+# Requires: codex CLI installed and authenticated.
+#
+# Security notes:
+#   - Task descriptions are passed to codex via STDIN, never via shell-expanded
+#     argv, to prevent command injection from the input string.
+#   - Agent names are validated against a strict allowlist.
+#   - Task type is validated against a fixed set of subcommands.
 
 set -euo pipefail
 
@@ -17,158 +24,203 @@ TASK_DESC="${2:-}"
 AGENT_NAME="${3:-}"
 
 if [ -z "$TASK_TYPE" ] || [ -z "$TASK_DESC" ]; then
-  echo "Usage:"
-  echo "  $0 feature  \"description\"          Full pipeline"
-  echo "  $0 bugfix   \"description\"          Executor + QA"
-  echo "  $0 security \"description\"          Security Agent"
-  echo "  $0 refactor \"description\"          Architect + Executor + QA"
-  echo "  $0 plan     \"description\"          Planner + Architect"
-  echo "  $0 agent    \"agent-name\" \"task\"    Single agent"
-  echo ""
-  echo "Agents: planner, architect, ux-agent, executor, qa-agent,"
-  echo "        security-agent, infra-agent, compliance-agent, context-steward"
+  cat <<'USAGE'
+Usage:
+  $0 feature   "description"            Full pipeline
+  $0 bugfix    "description"            Executor + QA
+  $0 security  "description"            Security Agent
+  $0 refactor  "description"            Architect + Executor + QA
+  $0 plan      "description"            Planner + Architect
+  $0 agent     "agent-name" "task"      Single agent
+
+Agents: planner, architect, ux-agent, executor, qa-agent,
+        security-agent, infra-agent, compliance-agent, context-steward
+USAGE
   exit 1
 fi
+
+# Validate task type against allowlist (defence in depth — the case statement
+# below would also reject unknown values).
+case "$TASK_TYPE" in
+  feature|bugfix|security|refactor|plan|agent) ;;
+  *)
+    printf 'Error: unknown task type. Allowed: feature, bugfix, security, refactor, plan, agent\n' >&2
+    exit 1
+    ;;
+esac
 
 AGENTS_DIR=".codex-agents"
 TEAM_DIR=".team"
 
 # Verify setup
 if [ ! -d "$AGENTS_DIR" ]; then
-  echo "Error: $AGENTS_DIR not found. Run:"
-  echo "  cp -r .claude/skills/agent-team/agents .codex-agents"
+  printf 'Error: %s not found. Run:\n' "$AGENTS_DIR" >&2
+  printf '  cp -r .claude/skills/agent-team/agents %s\n' "$AGENTS_DIR" >&2
   exit 1
 fi
 
 if [ ! -d "$TEAM_DIR" ]; then
-  echo "Error: $TEAM_DIR not found. Run:"
-  echo "  bash .claude/skills/agent-team/scripts/init-team.sh"
+  printf 'Error: %s not found. Run:\n' "$TEAM_DIR" >&2
+  printf '  bash .claude/skills/agent-team/scripts/init-team.sh\n' >&2
   exit 1
 fi
 
+# Allowlist of valid agent role names. Used both for the explicit "agent"
+# subcommand and as defence in depth inside run_agent.
+is_valid_agent() {
+  case "$1" in
+    planner|architect|ux-agent|executor|qa-agent|security-agent|infra-agent|compliance-agent|context-steward)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+# run_agent <role> <context>
+#
+# Builds the codex prompt on STDIN so the task description and context can
+# never be re-evaluated by the shell. Falls back to a temp file when codex
+# does not read from STDIN.
 run_agent() {
   local role="$1"
   local context="$2"
-  echo ""
-  echo "=========================================="
-  echo "  Running: $role"
-  echo "=========================================="
-  echo ""
-  codex "Read ${AGENTS_DIR}/${role}.md and follow its protocol exactly.
 
-Task: ${TASK_DESC}
+  if ! is_valid_agent "$role"; then
+    printf 'Error: refusing to run unknown agent: %s\n' "$role" >&2
+    exit 1
+  fi
 
-Context: ${context}
+  # Map "<role>-agent" to its directory under .team/agents/<role-dir>/
+  # using parameter expansion (no subshell, no shell injection surface).
+  local role_dir="${role%-agent}"
 
-Important:
-- Write outputs to ${TEAM_DIR}/agents/$(echo $role | sed 's/-agent//')/
-- Create Obsidian vault files in ${TEAM_DIR}/vault/
-- Update ${TEAM_DIR}/board.md with your status
-- Read prior agent outputs in ${TEAM_DIR}/agents/ before starting"
+  printf '\n==========================================\n'
+  printf '  Running: %s\n' "$role"
+  printf '==========================================\n\n'
+
+  local prompt_file
+  prompt_file="$(mktemp)"
+
+  # Layer EXIT on top of RETURN so the temp file is removed even if codex
+  # exits non-zero and `set -e` aborts the script before the function returns.
+  # shellcheck disable=SC2064
+  trap "rm -f -- '$prompt_file'" EXIT RETURN
+
+  {
+    printf 'Read %s/%s.md and follow its protocol exactly.\n\n' "$AGENTS_DIR" "$role"
+    printf 'Task: %s\n\n' "$TASK_DESC"
+    printf 'Context: %s\n\n' "$context"
+    printf 'Important:\n'
+    printf -- '- Write outputs to %s/agents/%s/\n' "$TEAM_DIR" "$role_dir"
+    printf -- '- Create Obsidian vault files in %s/vault/\n' "$TEAM_DIR"
+    printf -- '- Update %s/board.md with your status\n' "$TEAM_DIR"
+    printf -- '- Read prior agent outputs in %s/agents/ before starting\n' "$TEAM_DIR"
+  } > "$prompt_file"
+
+  # Pipe the prompt through STDIN. codex's argv stays free of user content.
+  codex < "$prompt_file"
+
+  rm -f -- "$prompt_file"
+  trap - EXIT RETURN
 }
 
 case "$TASK_TYPE" in
   feature)
-    echo "Pipeline: FEATURE (full)"
-    echo "Task: $TASK_DESC"
-    echo ""
+    printf 'Pipeline: FEATURE (full)\n'
+    printf 'Task: %s\n\n' "$TASK_DESC"
 
     # Phase 1: Planning
-    echo "═══ PHASE 1: PLANNING ═══"
+    printf '=== PHASE 1: PLANNING ===\n'
     run_agent "planner" "This is a new feature. Define requirements and acceptance criteria."
     run_agent "architect" "This is a new feature. Read ${TEAM_DIR}/agents/planner/requirements.md for requirements. Define technical design."
 
     # Phase 2: Design
-    echo "═══ PHASE 2: DESIGN ═══"
+    printf '=== PHASE 2: DESIGN ===\n'
     run_agent "ux-agent" "Read ${TEAM_DIR}/agents/planner/ and ${TEAM_DIR}/agents/architect/ for context. Define UX spec."
 
     # Phase 3: Implementation
-    echo "═══ PHASE 3: IMPLEMENTATION ═══"
+    printf '=== PHASE 3: IMPLEMENTATION ===\n'
     run_agent "executor" "Read ALL prior outputs in ${TEAM_DIR}/agents/planner/, ${TEAM_DIR}/agents/architect/, ${TEAM_DIR}/agents/ux/. Implement the feature."
 
     # Phase 4: Validation
-    echo "═══ PHASE 4: VALIDATION ═══"
+    printf '=== PHASE 4: VALIDATION ===\n'
     run_agent "qa-agent" "Read ${TEAM_DIR}/agents/planner/requirements.md for what to test. Read ${TEAM_DIR}/agents/executor/ for what was built. Test and validate."
 
     # Phase 5: Documentation
-    echo "═══ PHASE 5: DOCUMENTATION ═══"
+    printf '=== PHASE 5: DOCUMENTATION ===\n'
     run_agent "context-steward" "Read ALL agent outputs in ${TEAM_DIR}/agents/. Update vault MOC pages and project context."
 
-    echo ""
-    echo "Pipeline complete. Check ${TEAM_DIR}/vault/ for Obsidian docs."
+    printf '\nPipeline complete. Check %s/vault/ for Obsidian docs.\n' "$TEAM_DIR"
     ;;
 
   bugfix)
-    echo "Pipeline: BUG FIX (short)"
-    echo "Task: $TASK_DESC"
+    printf 'Pipeline: BUG FIX (short)\n'
+    printf 'Task: %s\n' "$TASK_DESC"
 
     run_agent "executor" "This is a bug fix. Investigate the code, diagnose the issue, and propose a fix."
     run_agent "qa-agent" "Read ${TEAM_DIR}/agents/executor/ for the diagnosis. Define verification steps for the fix."
 
-    echo ""
-    echo "Pipeline complete."
+    printf '\nPipeline complete.\n'
     ;;
 
   security)
-    echo "Pipeline: SECURITY REVIEW"
-    echo "Task: $TASK_DESC"
+    printf 'Pipeline: SECURITY REVIEW\n'
+    printf 'Task: %s\n' "$TASK_DESC"
 
     run_agent "security-agent" "Do a full security review. Check for OWASP Top 10, hardcoded secrets, injection risks, auth issues."
 
-    echo ""
-    echo "Review complete. Check ${TEAM_DIR}/agents/security/ and ${TEAM_DIR}/vault/"
+    printf '\nReview complete. Check %s/agents/security/ and %s/vault/\n' "$TEAM_DIR" "$TEAM_DIR"
     ;;
 
   refactor)
-    echo "Pipeline: REFACTOR"
-    echo "Task: $TASK_DESC"
+    printf 'Pipeline: REFACTOR\n'
+    printf 'Task: %s\n' "$TASK_DESC"
 
     run_agent "architect" "This is a refactoring task. Define how to restructure the code."
     run_agent "executor" "Read ${TEAM_DIR}/agents/architect/design.md. Implement the refactoring."
     run_agent "qa-agent" "Read ${TEAM_DIR}/agents/executor/. Verify no regressions."
 
-    echo ""
-    echo "Pipeline complete."
+    printf '\nPipeline complete.\n'
     ;;
 
   plan)
-    echo "Pipeline: PLANNING ONLY"
-    echo "Task: $TASK_DESC"
+    printf 'Pipeline: PLANNING ONLY\n'
+    printf 'Task: %s\n' "$TASK_DESC"
 
     run_agent "planner" "Define requirements and acceptance criteria. DO NOT implement."
     run_agent "architect" "Read ${TEAM_DIR}/agents/planner/requirements.md. Define technical design. DO NOT implement."
 
-    echo ""
-    echo "Planning complete. Review ${TEAM_DIR}/agents/planner/ and ${TEAM_DIR}/agents/architect/"
+    printf '\nPlanning complete. Review %s/agents/planner/ and %s/agents/architect/\n' "$TEAM_DIR" "$TEAM_DIR"
     ;;
 
   agent)
-    # Single agent mode: $TASK_DESC is actually the agent name, $AGENT_NAME is the task
+    # Single agent mode: argv was (agent, <agent-name>, <task>)
+    # so positional 2 is the agent name, positional 3 is the task.
     if [ -z "$AGENT_NAME" ]; then
-      echo "Usage: $0 agent <agent-name> \"task description\""
+      printf 'Usage: %s agent <agent-name> "task description"\n' "$0" >&2
       exit 1
     fi
     SINGLE_AGENT="$TASK_DESC"
     TASK_DESC="$AGENT_NAME"
 
-    if [ ! -f "${AGENTS_DIR}/${SINGLE_AGENT}.md" ]; then
-      echo "Error: agent '${SINGLE_AGENT}' not found in ${AGENTS_DIR}/"
-      echo "Available: $(ls ${AGENTS_DIR}/ | sed 's/\.md$//' | tr '\n' ', ')"
+    if ! is_valid_agent "$SINGLE_AGENT"; then
+      printf 'Error: unknown agent: %s\n' "$SINGLE_AGENT" >&2
+      printf 'Available: planner, architect, ux-agent, executor, qa-agent, security-agent, infra-agent, compliance-agent, context-steward\n' >&2
       exit 1
     fi
 
-    echo "Pipeline: SINGLE AGENT (${SINGLE_AGENT})"
-    echo "Task: $TASK_DESC"
+    if [ ! -f "${AGENTS_DIR}/${SINGLE_AGENT}.md" ]; then
+      printf 'Error: agent file not found: %s/%s.md\n' "$AGENTS_DIR" "$SINGLE_AGENT" >&2
+      exit 1
+    fi
+
+    printf 'Pipeline: SINGLE AGENT (%s)\n' "$SINGLE_AGENT"
+    printf 'Task: %s\n' "$TASK_DESC"
 
     run_agent "$SINGLE_AGENT" "You were called directly by the user. Focus on your specific role."
 
-    echo ""
-    echo "Done."
-    ;;
-
-  *)
-    echo "Unknown task type: $TASK_TYPE"
-    echo "Options: feature, bugfix, security, refactor, plan, agent"
-    exit 1
+    printf '\nDone.\n'
     ;;
 esac

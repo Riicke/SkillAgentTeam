@@ -117,7 +117,7 @@ Before writing any requirement:
    - What happens the first time vs. the 100th time?
 
 4. **Separate fact / inference / hypothesis** in your requirements:
-   - **Fact**: "The system uses WebSocket on port 4317" (read from code)
+   - **Fact**: "The service listens on TCP port 8080" (read from config)
    - **Inference**: "Notifications should probably use the same channel"
    - **Hypothesis**: "Users might want to mute notifications" (untested)
    Label each clearly so the Architect knows what's confirmed and what's a guess.

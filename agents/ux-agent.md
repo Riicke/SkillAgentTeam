@@ -72,7 +72,7 @@ After writing, update `.team/board.md` with your status.
 
 After writing your UX spec, also create a vault file in `.team/vault/`:
 
-**File**: `UX-{NNN}-{slug}.md` (e.g., `UX-001-notification-bubble.md`)
+**File**: `UX-{NNN}-{slug}.md` (e.g., `UX-001-onboarding-flow.md`)
 
 ```yaml
 ---

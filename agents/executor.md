@@ -141,9 +141,9 @@ Write this chain in your implementation notes so QA and the user can audit it.
 ### For All Changes:
 
 1. **Fact / Inference / Hypothesis** — In your implementation notes:
-   - **Fact**: "The click handler is missing" (verified by reading AgentAvatar.tsx)
-   - **Inference**: "Adding eventMode='static' should fix it" (based on PixiJS docs)
-   - **Hypothesis**: "This might affect performance with 10+ avatars" (untested)
+   - **Fact**: "The click handler is missing" (verified by reading the source)
+   - **Inference**: "Adding the missing event handler should fix it" (based on framework docs)
+   - **Hypothesis**: "This might affect performance under heavy load" (untested)
 
 2. **Explain why your fix works** — Not just "I changed X." but "I changed X
    because the root cause was Y, and this fix works because Z." Auditable.

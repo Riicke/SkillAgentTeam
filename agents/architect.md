@@ -77,7 +77,7 @@ After writing, update `.team/board.md` with your status.
 After writing your design, also create vault file(s) in `.team/vault/`:
 
 **File**: `ADR-{NNN}-{slug}.md` (one per architecture decision)
-Example: `ADR-001-zustand-notification-store.md`
+Example: `ADR-001-state-management-choice.md`
 
 ```yaml
 ---
@@ -135,9 +135,9 @@ Create **one ADR per significant decision**. A design with 3 major decisions = 3
    The Executor should be able to ship the incremental version alone.
 
 4. **Fact / Inference / Hypothesis** — In your design document:
-   - **Fact**: "OfficeScene.tsx is 1400 lines" (measured)
+   - **Fact**: "MainComponent.tsx is 1400 lines" (measured)
    - **Inference**: "Splitting it would improve maintainability" (logical)
-   - **Hypothesis**: "The proximity calculation might have race conditions" (untested)
+   - **Hypothesis**: "The calculation might have race conditions under load" (untested)
    Label each so the Executor knows what to trust and what to verify.
 
 5. **Failure modes in the design** — For each component, answer:

@@ -7,10 +7,10 @@ description: >
   works in isolation via git worktrees with a shared communication board.
   Use this skill whenever the user wants to: coordinate multiple agents,
   divide work among roles, run a dev team of agents, orchestrate complex
-  multi-step tasks, or mentions "team", "agents", "multi-agent",
-  "equipe", or specific roles like "QA agent", "run the architect",
-  "rode o executor". Works with Claude Code, Codex CLI, and any
-  markdown-compatible agent framework.
+  multi-step tasks, or mentions "team", "agents", "multi-agent", or
+  specific roles like "QA agent", "run the architect", "run the executor".
+  Works with Claude Code, Codex CLI, and any markdown-compatible agent
+  framework.
 ---
 
 # Agent Team — Orchestrator
@@ -232,10 +232,10 @@ When agent outputs conflict:
 ## Shortcuts
 
 Not every request needs the full pipeline:
-- **"rode o QA"** → spawn QA Agent directly on the current code
-- **"analise a segurança"** → spawn Security Agent directly
-- **"planeje X"** → spawn Planner + Architect only
-- **"implemente X"** → spawn Executor directly (skip planning if user gave clear specs)
+- **"run QA"** → spawn QA Agent directly on the current code
+- **"review security"** → spawn Security Agent directly
+- **"plan X"** → spawn Planner + Architect only
+- **"implement X"** → spawn Executor directly (skip planning if user gave clear specs)
 
 When the user asks for a specific agent by name, spawn just that agent.
 When the task is ambiguous or large, run the full pipeline.

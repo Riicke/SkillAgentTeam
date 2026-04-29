@@ -1,311 +1,312 @@
 # Tutorial — Agent Team
 
-## Como funciona (visão geral)
+## How it works (overview)
 
-Você tem uma **equipe de 10 agentes de IA**. Cada um tem uma função
-específica, como numa empresa real de software:
+You have a **team of 10 AI agents**. Each one has a specialized role,
+just like a real software company:
 
 ```
-  VOCÊ (dono do projeto)
+  YOU (project owner)
     │
     ▼
-  ORCHESTRATOR (Tech Lead)  ← Este é o "gerente", roda automaticamente
+  ORCHESTRATOR (Tech Lead)  ← the "manager"; runs automatically
     │
-    ├──► Planner (PM)        — define O QUE fazer
-    ├──► Architect (Staff)   — define COMO fazer
-    ├──► UX Agent (Designer) — define como o USUÁRIO interage
-    ├──► Executor (Dev)      — ESCREVE o código
-    ├──► QA Agent (Tester)   — TESTA o código
-    ├──► Security (SecEng)   — VERIFICA segurança
-    ├──► Infra (DevOps)      — faz DEPLOY
-    ├──► Compliance (Legal)  — verifica DADOS e regras
-    └──► Context Steward     — DOCUMENTA tudo no Obsidian
+    ├──► Planner (PM)        — defines WHAT to build
+    ├──► Architect (Staff)   — defines HOW to build it
+    ├──► UX Agent (Designer) — defines how the USER interacts
+    ├──► Executor (Dev)      — WRITES the code
+    ├──► QA Agent (Tester)   — TESTS the code
+    ├──► Security (SecEng)   — REVIEWS security
+    ├──► Infra (DevOps)      — handles DEPLOY
+    ├──► Compliance (Legal)  — verifies DATA and rules
+    └──► Context Steward     — DOCUMENTS everything in Obsidian
 ```
 
 ---
 
-## Eles rodam simultaneamente?
+## Do they run simultaneously?
 
-**Sim e não.** Depende da fase:
+**Yes and no.** It depends on the phase:
 
 ```
-FASE 1 ─ PLANEJAMENTO
+PHASE 1 ─ PLANNING
   ┌─────────────┐   ┌──────────────┐
-  │   Planner   │   │  Architect   │   ← rodam EM PARALELO
-  │ (o que)     │   │  (como)      │
+  │   Planner   │   │  Architect   │   ← run IN PARALLEL
+  │  (the what) │   │  (the how)   │
   └──────┬──────┘   └──────┬───────┘
          │                 │
          └────────┬────────┘
                   ▼
-FASE 2 ─ DESIGN
+PHASE 2 ─ DESIGN
   ┌─────────────┐
-  │  UX Agent   │   ← roda SOZINHO (precisa ler fase 1)
+  │  UX Agent   │   ← runs ALONE (needs Phase 1 output)
   └──────┬──────┘
          ▼
-FASE 3 ─ IMPLEMENTAÇÃO
+PHASE 3 ─ IMPLEMENTATION
   ┌─────────────┐
-  │  Executor   │   ← roda SOZINHO em git worktree isolado
-  │  (código)   │
+  │  Executor   │   ← runs ALONE in an isolated git worktree
+  │   (code)    │
   └──────┬──────┘
          ▼
-FASE 4 ─ VALIDAÇÃO
+PHASE 4 ─ VALIDATION
   ┌──────────┐  ┌──────────┐  ┌────────────┐
-  │ QA Agent │  │ Security │  │ Compliance │  ← rodam EM PARALELO
+  │ QA Agent │  │ Security │  │ Compliance │  ← run IN PARALLEL
   └────┬─────┘  └────┬─────┘  └─────┬──────┘
        │              │              │
        └──────────────┼──────────────┘
                       ▼
-FASE 5 ─ MERGE
+PHASE 5 ─ MERGE
   ┌──────────────┐   ┌─────────────────┐
-  │ Orchestrator │   │ Context Steward │   ← finalizam
-  │ (merge)      │   │ (documenta)     │
+  │ Orchestrator │   │ Context Steward │   ← finalize
+  │   (merge)    │   │  (documentation)│
   └──────────────┘   └─────────────────┘
 ```
 
-**Regra**: dentro da mesma fase = paralelo. Entre fases = sequencial.
+**Rule**: same phase = parallel. Between phases = sequential.
 
-Cada agente **lê o output dos anteriores** e **escreve o seu** para o próximo.
+Each agent **reads the output of the previous ones** and **writes its own**
+for the next.
 
 ---
 
-## Um joga para o outro?
+## Do they hand off to each other?
 
-Sim. É uma **cadeia**. Cada agente produz um documento que o próximo consome:
+Yes. It is a **chain**. Each agent produces a document the next one consumes:
 
 ```
-Planner escreve → requirements.md
+Planner writes → requirements.md
                       │
-Architect lê requirements, escreve → design.md
+Architect reads requirements, writes → design.md
                                           │
-UX Agent lê requirements + design, escreve → ux-spec.md
+UX Agent reads requirements + design, writes → ux-spec.md
                                                   │
-Executor lê TUDO acima, escreve → CÓDIGO + implementation-notes.md
+Executor reads ALL the above, writes → CODE + implementation-notes.md
                                                          │
-QA Agent lê requirements + código, escreve → test-report.md
+QA Agent reads requirements + code, writes → test-report.md
                                                       │
-Security lê código, escreve → security-report.md
+Security reads code, writes → security-report.md
                                           │
-Orchestrator lê TODOS os reports → decide merge ou corrigir
+Orchestrator reads ALL reports → decides merge or fix
                                           │
-Context Steward lê tudo → atualiza vault Obsidian
+Context Steward reads everything → updates Obsidian vault
 ```
 
-A comunicação toda acontece por **arquivos na pasta `.team/`**:
+All communication happens through **files in the `.team/` folder**:
 
 ```
 .team/
-├── board.md           ← Kanban (quem está fazendo o quê)
+├── board.md           ← Kanban (who is doing what)
 ├── agents/
-│   ├── planner/requirements.md      ← Output do Planner
-│   ├── architect/design.md          ← Output do Architect
-│   ├── ux/ux-spec.md               ← Output do UX
-│   ├── executor/implementation.md   ← Output do Executor
-│   ├── qa/test-report.md           ← Output do QA
-│   └── security/security-report.md ← Output do Security
-└── vault/                           ← Obsidian vault (documentação permanente)
+│   ├── planner/requirements.md       ← Planner output
+│   ├── architect/design.md           ← Architect output
+│   ├── ux/ux-spec.md                 ← UX output
+│   ├── executor/implementation.md    ← Executor output
+│   ├── qa/test-report.md             ← QA output
+│   └── security/security-report.md   ← Security output
+└── vault/                            ← Obsidian vault (permanent docs)
 ```
 
 ---
 
-## Passo a passo para começar
+## Step-by-step start
 
-### Passo 1 — Inicialize o workspace (só na primeira vez)
+### Step 1 — Initialize the workspace (first time only)
 
 ```bash
 bash .claude/skills/agent-team/scripts/init-team.sh
 ```
 
-Isso cria a pasta `.team/` com o board, vault Obsidian e logs de cada agente.
-**Você já fez isso** no AvatarHQ.
+This creates the `.team/` folder with the board, Obsidian vault, and a
+log file for each agent.
 
-### Passo 2 — Peça algo ao Claude
+### Step 2 — Ask Claude something
 
-Abra o Claude Code no seu projeto e fale normalmente. O Orchestrator
-ativa automaticamente quando detecta certas frases.
+Open Claude Code in your project and talk normally. The Orchestrator
+activates automatically when it detects certain phrases.
 
-### Passo 3 — Acompanhe no Obsidian
+### Step 3 — Track progress in Obsidian
 
-Abra `.team/vault/` como vault no Obsidian e veja o grafo crescer.
-
----
-
-## 6 Modos de Uso
-
-### Modo 1: Pipeline Completo (feature nova)
-
-**Quando usar**: Funcionalidade nova, complexa, com UI.
-
-```
-Você diz:
-  "Equipe, preciso de um sistema de notificações.
-   O avatar deve mostrar um badge quando receber mensagem."
-
-O que acontece:
-  1. Orchestrator analisa → classifica como "New Feature"
-  2. Fase 1: Planner + Architect rodam em paralelo
-  3. Fase 2: UX Agent define a interface
-  4. Fase 3: Executor implementa em branch isolada
-  5. Fase 4: QA + Security validam em paralelo
-  6. Fase 5: Merge + Context Steward documenta
-
-Resultado:
-  - Código implementado em branch separada
-  - 6+ documentos no vault Obsidian
-  - Tudo linkado e rastreável
-```
-
-### Modo 2: Pipeline Curto (bug fix)
-
-**Quando usar**: Algo quebrou, precisa corrigir.
-
-```
-Você diz:
-  "O botão de fala do avatar não responde ao click."
-
-O que acontece:
-  1. Orchestrator analisa → classifica como "Bug Fix"
-  2. PULA Fase 1 e 2 (não precisa planejar um bug fix)
-  3. Fase 3: Executor investiga e corrige
-  4. Fase 4: QA valida a correção
-  5. Fase 5: Merge
-
-Resultado:
-  - Bug diagnosticado e corrigido
-  - BUG-xxx.md + QA-xxx.md no vault
-```
-
-### Modo 3: Agente Direto (shortcut)
-
-**Quando usar**: Você sabe exatamente qual agente quer.
-
-```
-Você diz:                          O que roda:
-  "Rode o Security Agent"         → Só Security
-  "Rode o QA nesse código"        → Só QA
-  "Rode o Architect para cache"   → Só Architect
-  "Analise a segurança"           → Só Security
-  "Planeje o sistema de auth"     → Só Planner + Architect
-```
-
-### Modo 4: Refactor
-
-**Quando usar**: Código funciona mas precisa melhorar.
-
-```
-Você diz:
-  "Refatorem o OfficeScene.tsx, está muito grande."
-
-O que acontece:
-  1. Architect define como dividir
-  2. Executor implementa a refatoração
-  3. QA garante que nada quebrou
-```
-
-### Modo 5: Review de Segurança
-
-**Quando usar**: Antes de deploy ou auditoria.
-
-```
-Você diz:
-  "Equipe, revisem a segurança do runtime inteiro."
-
-O que acontece:
-  1. Security faz varredura completa
-  2. Compliance verifica dados e LGPD
-  3. (opcional) QA testa as correções
-```
-
-### Modo 6: Só Planejamento
-
-**Quando usar**: Quer pensar antes de fazer.
-
-```
-Você diz:
-  "Planejem um sistema de plugins para os avatares.
-   Não implementem ainda, só o plano."
-
-O que acontece:
-  1. Planner define requirements
-  2. Architect define arquitetura
-  3. PARA. Ninguém implementa.
-
-Resultado:
-  - TASK-xxx.md + ADR-xxx.md no vault
-  - Pronto para você revisar antes de mandar executar
-```
+Open `.team/vault/` as a vault in Obsidian and watch the graph grow.
 
 ---
 
-## Isolamento: como eles não se atrapalham
+## 6 ways to use the team
 
-### Agentes que NÃO escrevem código
+### Mode 1: Full pipeline (new feature)
+
+**When to use**: a new, complex feature with UI.
+
+```
+You say:
+  "Team, I need a notification system. The dashboard should
+   show a badge when a new message arrives."
+
+What happens:
+  1. Orchestrator analyzes → classifies as "New Feature"
+  2. Phase 1: Planner + Architect run in parallel
+  3. Phase 2: UX Agent defines the interface
+  4. Phase 3: Executor implements in an isolated branch
+  5. Phase 4: QA + Security validate in parallel
+  6. Phase 5: Merge + Context Steward documents
+
+Result:
+  - Code implemented in a separate branch
+  - 6+ documents in the Obsidian vault
+  - Everything linked and traceable
+```
+
+### Mode 2: Short pipeline (bug fix)
+
+**When to use**: something is broken and needs fixing.
+
+```
+You say:
+  "The login button does not respond to clicks."
+
+What happens:
+  1. Orchestrator analyzes → classifies as "Bug Fix"
+  2. SKIPS Phase 1 and 2 (no need to plan a bug fix)
+  3. Phase 3: Executor investigates and fixes
+  4. Phase 4: QA validates the fix
+  5. Phase 5: Merge
+
+Result:
+  - Bug diagnosed and fixed
+  - BUG-xxx.md + QA-xxx.md in the vault
+```
+
+### Mode 3: Direct agent (shortcut)
+
+**When to use**: you know exactly which agent you want.
+
+```
+You say:                          What runs:
+  "Run the Security Agent"        → Security only
+  "Run QA on this code"           → QA only
+  "Run the Architect for cache"   → Architect only
+  "Review security"               → Security only
+  "Plan the auth system"          → Planner + Architect only
+```
+
+### Mode 4: Refactor
+
+**When to use**: code works but needs improvement.
+
+```
+You say:
+  "Refactor BigComponent.tsx — it is too large."
+
+What happens:
+  1. Architect defines how to split it
+  2. Executor implements the refactor
+  3. QA ensures nothing broke
+```
+
+### Mode 5: Security review
+
+**When to use**: before deploy or audit.
+
+```
+You say:
+  "Team, review the security of the entire runtime."
+
+What happens:
+  1. Security does a full scan
+  2. Compliance checks data and regulations
+  3. (optional) QA tests the fixes
+```
+
+### Mode 6: Planning only
+
+**When to use**: think before building.
+
+```
+You say:
+  "Plan a plugin system. Do not implement yet, just the plan."
+
+What happens:
+  1. Planner defines requirements
+  2. Architect defines architecture
+  3. STOP. Nobody implements.
+
+Result:
+  - TASK-xxx.md + ADR-xxx.md in the vault
+  - Ready for you to review before approving execution
+```
+
+---
+
+## Isolation: how they avoid stepping on each other
+
+### Agents that DO NOT write code
 Planner, Architect, UX, Security, Compliance, Context Steward
 
-Eles só leem o código e escrevem documentos na pasta `.team/`.
-Cada um escreve **só na sua pasta**. Não tocam nos arquivos do projeto.
+They only read code and write documents under `.team/`.
+Each one writes **only in its own folder**. They never touch
+project source files.
 
-### Agentes que ESCREVEM código
+### Agents that DO write code
 Executor, QA, Infra
 
-Eles trabalham em **git worktrees** (cópias isoladas do repo):
+They work in **git worktrees** (isolated copies of the repo):
 
 ```
-Projeto principal (main)
+Main project (main)
   │
   ├── .worktrees/
-  │   ├── agent-executor-task-001/    ← Executor trabalha aqui
-  │   │   └── (cópia completa do repo na branch agent/executor/task-001)
+  │   ├── agent-executor-task-001/    ← Executor works here
+  │   │   └── (full repo copy on branch agent/executor/task-001)
   │   │
-  │   └── agent-qa-task-001/          ← QA trabalha aqui
-  │       └── (cópia completa do repo na branch agent/qa/task-001)
+  │   └── agent-qa-task-001/          ← QA works here
+  │       └── (full repo copy on branch agent/qa/task-001)
   │
-  └── src/ (intocado até o merge final)
+  └── src/ (untouched until final merge)
 ```
 
-Quando tudo está validado, o Orchestrator faz merge das branches.
+When everything is validated, the Orchestrator merges the branches.
 
 ---
 
-## Frases que ativam o skill
+## Phrases that trigger the skill
 
-| Frase                                    | Ação                          |
-|------------------------------------------|-------------------------------|
-| "Equipe, ..."                            | Pipeline completo             |
-| "Time, precisamos de..."                 | Pipeline completo             |
-| "Crie/Adicione/Implemente [feature]"     | Pipeline completo             |
-| "Corrige/Fixa [bug]"                     | Pipeline curto (Executor+QA)  |
-| "Rode o [nome do agente]"               | Agente direto                 |
-| "Analise a segurança"                    | Security direto               |
-| "Planeje [algo]"                         | Planner + Architect           |
-| "Refatore [algo]"                        | Architect + Executor + QA     |
-| "Faça deploy de..."                      | Infra + Executor              |
-| "Revise compliance de..."               | Compliance + Security         |
+| Phrase                                   | Action                         |
+|------------------------------------------|--------------------------------|
+| "Team, ..."                              | Full pipeline                  |
+| "We need ..."                            | Full pipeline                  |
+| "Create / Add / Implement [feature]"     | Full pipeline                  |
+| "Fix [bug]"                              | Short pipeline (Executor + QA) |
+| "Run the [agent name]"                   | Direct agent                   |
+| "Review security"                        | Security direct                |
+| "Plan [something]"                       | Planner + Architect            |
+| "Refactor [something]"                   | Architect + Executor + QA      |
+| "Deploy ..."                             | Infra + Executor               |
+| "Compliance review of ..."               | Compliance + Security          |
 
 ---
 
-## O que cada agente produz no Obsidian
+## What each agent produces in Obsidian
 
-Depois de cada tarefa, o vault ganha novos arquivos:
+After each task, the vault gains new files:
 
 ```
 vault/
-├── SPRINT-001-notificacoes.md      ← Orchestrator (visão geral da tarefa)
-├── TASK-001-notificacoes.md        ← Planner (requirements)
-├── ADR-001-zustand-store.md        ← Architect (decisão técnica)
-├── UX-001-notification-bubble.md   ← UX Agent (spec de interface)
-├── IMPL-001-notification-store.md  ← Executor (o que foi implementado)
-├── QA-001-notification-tests.md    ← QA (relatório de testes)
-├── SEC-001-xss-check.md           ← Security (findings)
-├── LOG-planner.md                  ← Changelog do Planner (atualizado)
-├── LOG-executor.md                 ← Changelog do Executor (atualizado)
-├── MOC-myemployees-avatarhq.md     ← Context Steward (índice atualizado)
+├── SPRINT-001-onboarding.md          ← Orchestrator (task overview)
+├── TASK-001-onboarding.md            ← Planner (requirements)
+├── ADR-001-state-store.md            ← Architect (technical decision)
+├── UX-001-onboarding-flow.md         ← UX Agent (interface spec)
+├── IMPL-001-state-store-impl.md      ← Executor (what was built)
+├── QA-001-onboarding-tests.md        ← QA (test report)
+├── SEC-001-input-validation.md       ← Security (findings)
+├── LOG-planner.md                    ← Planner changelog (updated)
+├── LOG-executor.md                   ← Executor changelog (updated)
+├── MOC-example-app.md                ← Context Steward (project index)
 └── ...
 ```
 
-No Obsidian Graph View, isso aparece como:
+In Obsidian Graph View this looks like:
 
 ```
-         MOC-avatar-hq
+         MOC-example-app
         ╱      │      ╲
   TASK-001   BUG-001   SEC-001
    ╱  │  ╲              │
@@ -316,19 +317,19 @@ ADR  UX  IMPL         LOG-security
     LOG-executor ─── MOC-agents
 ```
 
-Cada nó é clicável. Cada link é rastreável.
+Every node is clickable. Every link is traceable.
 
 ---
 
-## Resumo rápido
+## Quick FAQ
 
-| Pergunta                         | Resposta                                  |
-|----------------------------------|-------------------------------------------|
-| Rodam simultaneamente?           | Sim, dentro da mesma fase                 |
-| Um joga para o outro?            | Sim, via arquivos na pasta `.team/`       |
-| Precisam de git?                 | Sim, para worktrees (agentes que codam)   |
-| Posso rodar só 1 agente?         | Sim, é só pedir pelo nome                 |
-| Posso rodar no Codex também?     | Sim, veja `references/codex-adapter.md`   |
-| Onde vejo tudo?                  | Obsidian vault em `.team/vault/`          |
-| Eles mexem no meu código direto? | Não, trabalham em branch isolada          |
-| Quem decide o merge?             | O Orchestrator, depois que QA aprova      |
+| Question                              | Answer                                       |
+|---------------------------------------|----------------------------------------------|
+| Do they run simultaneously?           | Yes, within the same phase                   |
+| Do they hand off to each other?       | Yes, via files in `.team/`                   |
+| Do they need git?                     | Yes, for worktrees (the agents that code)    |
+| Can I run a single agent?             | Yes, just ask for it by name                 |
+| Can I run on Codex too?               | Yes, see `references/codex-adapter.md`       |
+| Where do I see everything?            | Obsidian vault at `.team/vault/`             |
+| Do they touch my code directly?       | No, they work on isolated branches           |
+| Who decides the merge?                | The Orchestrator, after QA approves          |

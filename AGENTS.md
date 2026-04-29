@@ -46,8 +46,6 @@ All agents read/write through `.team/`. Each agent:
 
 ## Project Context
 
-- Framework: React 19 + Vite + TypeScript
-- Rendering: PixiJS 8 via @pixi/react
-- State: Zustand
-- Runtime: Node.js WebSocket server (port 4317)
-- UI Language: Portuguese (pt-BR)
+For project-specific context (tech stack, ports, language, conventions),
+agents read `.team/context.md`. That file is created by `init-team.sh` and
+maintained by the Context Steward.

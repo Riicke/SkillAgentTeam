@@ -5,22 +5,23 @@
 Turn your AI assistant into a full development team with 10 specialized agents that plan, design, implement, test, and document — all coordinated automatically.
 
 ```
-     You: "Equipe, criem um sistema de autenticacao"
+     You: "Team, build an authentication system"
       |
       v
   Orchestrator (Tech Lead)
       |
       +---> Planner -----> requirements.md
-      +---> Architect ----> design.md         } Phase 1 (parallel)
+      +---> Architect ----> design.md          } Phase 1 (parallel)
       |
-      +---> UX Agent -----> ux-spec.md        } Phase 2
+      +---> UX Agent -----> ux-spec.md         } Phase 2
       |
-      +---> Executor -----> code (worktree)   } Phase 3
+      +---> Executor -----> code (worktree)    } Phase 3
       |
-      +---> QA Agent -----> test-report.md    }
-      +---> Security -----> sec-report.md     } Phase 4 (parallel)
+      +---> QA Agent -----> test-report.md     }
+      +---> Security -----> sec-report.md      } Phase 4 (parallel)
+      +---> Compliance ---> compliance.md      }
       |
-      +---> Context Steward -> vault/*.md     } Phase 5
+      +---> Context Steward -> vault/*.md      } Phase 5
 ```
 
 ---
@@ -46,34 +47,34 @@ Turn your AI assistant into a full development team with 10 specialized agents t
 ### Install both (Claude Code + Codex)
 
 ```bash
-git clone https://github.com/riickes/SkillAgenteTeam.git .agent-team && bash .agent-team/install.sh && rm -rf .agent-team
+git clone https://github.com/Riicke/SkillAgentTeam.git .agent-team && bash .agent-team/install.sh && rm -rf .agent-team
 ```
 
 ### Install only Claude Code
 
 ```bash
-git clone https://github.com/riickes/SkillAgenteTeam.git .agent-team && bash .agent-team/install.sh --claude && rm -rf .agent-team
+git clone https://github.com/Riicke/SkillAgentTeam.git .agent-team && bash .agent-team/install.sh --claude && rm -rf .agent-team
 ```
 
 ### Install only Codex CLI
 
 ```bash
-git clone https://github.com/riickes/SkillAgenteTeam.git .agent-team && bash .agent-team/install.sh --codex && rm -rf .agent-team
+git clone https://github.com/Riicke/SkillAgentTeam.git .agent-team && bash .agent-team/install.sh --codex && rm -rf .agent-team
 ```
 
 ### Manual
 
 ```bash
 # 1. Clone this repo
-git clone https://github.com/riickes/SkillAgenteTeam.git
+git clone https://github.com/Riicke/SkillAgentTeam.git
 
 # 2. Copy skill to your project
 mkdir -p your-project/.claude/skills
-cp -r SkillAgenteTeam your-project/.claude/skills/agent-team
+cp -r SkillAgentTeam your-project/.claude/skills/agent-team
 
 # 3. Copy Codex agents (optional, for Codex CLI)
-cp -r SkillAgenteTeam/agents your-project/.codex-agents
-cp SkillAgenteTeam/AGENTS.md your-project/AGENTS.md
+cp -r SkillAgentTeam/agents your-project/.codex-agents
+cp SkillAgentTeam/AGENTS.md your-project/AGENTS.md
 
 # 4. Initialize workspace
 cd your-project
@@ -109,14 +110,14 @@ your-project/
 
 ### Claude Code (automatic)
 
-Just talk naturally. The skill triggers on keywords like **"Equipe"**, **"Time"**, agent names, or complex tasks:
+Just talk naturally. The skill triggers on keywords like **"team"**, agent names, or complex tasks:
 
 ```
-Equipe, adicionem autenticacao no servidor       --> full pipeline
-O botao de login nao funciona                    --> bug fix (Executor + QA)
-Rode o Security Agent no runtime                 --> single agent
-Planejem o sistema de cache                      --> Planner + Architect only
-Refatorem o arquivo OfficeScene.tsx              --> Architect + Executor + QA
+Team, add authentication to the server            --> full pipeline
+The login button isn't working                    --> bug fix (Executor + QA)
+Run the Security Agent on the runtime             --> single agent
+Plan the cache system                             --> Planner + Architect only
+Refactor BigComponent.tsx                         --> Architect + Executor + QA
 ```
 
 ### Codex CLI
@@ -207,10 +208,10 @@ ADR  UX  IMPL       LOG-security
 ## File Structure
 
 ```
-SkillAgenteTeam/
+SkillAgentTeam/
 ├── SKILL.md                           # Main orchestrator (Claude Code entry point)
 ├── AGENTS.md                          # Codex CLI entry point
-├── TUTORIAL.md                        # Full tutorial (pt-BR)
+├── TUTORIAL.md                        # Full tutorial
 ├── agents/                            # Agent prompts (one per role)
 │   ├── planner.md
 │   ├── architect.md
