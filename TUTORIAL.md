@@ -169,15 +169,19 @@ You're now ready to run the team.
 
 ## 4. Walkthrough — your first feature
 
-Let's add a simple feature end-to-end. Open Claude Code in your project
-and type:
+Let's add a simple feature end-to-end. The walkthrough below uses
+Claude Code; the equivalent Codex CLI invocation is at the bottom of
+this section.
+
+**With Claude Code** — open Claude Code in your project and type:
 
 ```
 Team, add a /health endpoint that returns { status: "ok" } as JSON.
 Include a test.
 ```
 
-Here is what happens behind the scenes:
+Here is what happens behind the scenes (the same flow applies to
+Codex CLI; only how the Orchestrator invokes the agents differs):
 
 ### Phase 0 — Orchestrator analysis
 
@@ -294,6 +298,29 @@ without the team. For a `/health` endpoint that's overkill — it's an
 illustration. For a real feature like authentication or notifications,
 the audit trail is invaluable.
 
+### Same task on Codex CLI
+
+The flow above is identical with Codex CLI; only the entry point
+changes. From your project root:
+
+```bash
+bash .claude/skills/agent-team/scripts/run-codex-pipeline.sh feature \
+  "Add a /health endpoint that returns { status: 'ok' } as JSON. Include a test."
+```
+
+`run-codex-pipeline.sh` runs each phase as a sequential `codex`
+invocation (Codex CLI does not support parallel agents within a phase,
+so Phase 1's Planner and Architect run one after the other instead of
+side by side). All other behaviors — worktrees, `.team/` outputs,
+Obsidian vault writes, the merge step — are identical.
+
+For a single-agent run on Codex, use the `agent` subcommand:
+
+```bash
+bash .claude/skills/agent-team/scripts/run-codex-pipeline.sh agent \
+  security-agent "Audit the API surface"
+```
+
 ---
 
 ## 5. The five phases in detail
@@ -386,16 +413,19 @@ Obsidian Maps of Content, and the task is archived.
 ## 6. Six ways to use the team
 
 Not every request needs the full pipeline. Pick the mode that matches
-your task.
+your task. Each mode below shows how to invoke it from both Claude Code
+(natural language) and Codex CLI (the wrapper script).
 
 ### Mode 1 — Full pipeline (new feature)
 
 **When**: a new, complex feature with UI.
 
-```
-You: "Team, I need a notification system. The dashboard should show a
-      badge when a new message arrives."
+| Path | Invocation |
+|------|------------|
+| Claude Code | `Team, I need a notification system. The dashboard should show a badge when a new message arrives.` |
+| Codex CLI | `bash scripts/run-codex-pipeline.sh feature "Notification system with dashboard badge"` |
 
+```
 What runs:
   Phase 1: Planner + Architect
   Phase 2: UX Agent
@@ -413,9 +443,12 @@ Result:
 
 **When**: something is broken and needs fixing.
 
-```
-You: "The login button does not respond to clicks."
+| Path | Invocation |
+|------|------------|
+| Claude Code | `The login button does not respond to clicks.` |
+| Codex CLI | `bash scripts/run-codex-pipeline.sh bugfix "Login button does not respond to clicks"` |
 
+```
 What runs:
   Phase 3: Executor (investigates and fixes)
   Phase 4: QA (validates the fix)
@@ -430,22 +463,38 @@ Result:
 
 **When**: you know exactly which agent you want.
 
+**Claude Code** — name the agent in plain English:
+
 ```
-You say:                          What runs:
-  "Run the Security Agent"        → Security only
-  "Run QA on this code"           → QA only
-  "Run the Architect for cache"   → Architect only
-  "Review security"               → Security only
-  "Plan the auth system"          → Planner + Architect only
+"Run the Security Agent"        → Security only
+"Run QA on this code"           → QA only
+"Run the Architect for cache"   → Architect only
+"Review security"               → Security only
+"Plan the auth system"          → Planner + Architect only
 ```
+
+**Codex CLI** — use the `agent` subcommand:
+
+```bash
+bash scripts/run-codex-pipeline.sh agent security-agent "Audit the API"
+bash scripts/run-codex-pipeline.sh agent qa-agent       "Validate the auth flow"
+bash scripts/run-codex-pipeline.sh agent architect      "Design the cache layer"
+```
+
+Valid agent names: `planner`, `architect`, `ux-agent`, `executor`,
+`qa-agent`, `security-agent`, `infra-agent`, `compliance-agent`,
+`context-steward`.
 
 ### Mode 4 — Refactor
 
 **When**: code works but needs improvement.
 
-```
-You: "Refactor BigComponent.tsx — it is too large."
+| Path | Invocation |
+|------|------------|
+| Claude Code | `Refactor BigComponent.tsx — it is too large.` |
+| Codex CLI | `bash scripts/run-codex-pipeline.sh refactor "Split BigComponent.tsx — it is too large"` |
 
+```
 What runs:
   Architect (defines the split)
   Executor  (implements)
@@ -456,9 +505,12 @@ What runs:
 
 **When**: before deploy, before audit, or after a CVE drops.
 
-```
-You: "Team, review the security of the entire runtime."
+| Path | Invocation |
+|------|------------|
+| Claude Code | `Team, review the security of the entire runtime.` |
+| Codex CLI | `bash scripts/run-codex-pipeline.sh security "Review the security of the entire runtime"` |
 
+```
 What runs:
   Security  (full STRIDE walkthrough on the diff or the whole repo)
   Compliance (data and regulation check)
@@ -469,9 +521,12 @@ What runs:
 
 **When**: think before building.
 
-```
-You: "Plan a plugin system. Don't implement yet."
+| Path | Invocation |
+|------|------------|
+| Claude Code | `Plan a plugin system. Don't implement yet.` |
+| Codex CLI | `bash scripts/run-codex-pipeline.sh plan "Design a plugin system"` |
 
+```
 What runs:
   Planner   (requirements)
   Architect (architecture)
@@ -675,11 +730,47 @@ The full integration guide is in
 
 ## 11. Troubleshooting
 
-**Claude Code isn't triggering the skill on "team, ...".**
+### Claude Code
+
+**The skill isn't triggering on "team, ...".**
 Confirm `.claude/skills/agent-team/SKILL.md` exists and the frontmatter
 contains `name: agent-team`. The trigger phrases are listed in the
 `description` field. If the description doesn't appear in your message,
-invoke explicitly with `/agent-team`.
+invoke explicitly:
+
+```
+/agent-team add user authentication
+```
+
+**Sub-agents aren't running in parallel.**
+The Orchestrator uses Claude Code's `Agent` tool with `isolation:
+"worktree"`. Confirm your Claude Code version supports the `Agent`
+tool with isolation modes (1.0+). Older versions will run the pipeline
+sequentially — still correct, just slower.
+
+**Tool permission prompts on every agent spawn.**
+Whitelist the `Agent` tool and `Bash(bash <skill>/scripts/*)` in your
+Claude Code settings, or run trusted projects in `--auto-permissions`
+mode.
+
+### Codex CLI
+
+**`run-codex-pipeline.sh` reports a prompt error.**
+Older `codex` versions read prompts only from `argv`, while the
+pipeline script uses stdin for security. Check `codex --help`. If your
+version doesn't support stdin, edit `run-codex-pipeline.sh` line 119 to
+use `codex - < "$prompt_file"`, or upgrade `codex`.
+
+**Pipeline halts after the Planner.**
+Each phase reads the previous one's output. Confirm `AGENTS.md` is in
+the project root and `.codex-agents/` exists. Codex reads both before
+each role to know how to behave.
+
+**Agents run but never write to `.team/`.**
+Codex needs filesystem access in the project root. Confirm you launched
+`codex` from the project directory and that `.team/` is writable.
+
+### Both / common
 
 **`init-team.sh` fails with "Permission denied".**
 Run with `bash <path>` rather than executing directly:
@@ -688,20 +779,13 @@ Run with `bash <path>` rather than executing directly:
 bash .claude/skills/agent-team/scripts/init-team.sh
 ```
 
-**`create-worktree.sh` rejects "executor" as the agent name.**
+**`create-worktree.sh` rejects an agent name or task ID.**
 Names must be lowercase, alphanumeric, and dash-separated (regex
-`^[a-z0-9][a-z0-9-]*$`). This is enforced to prevent path traversal.
-"executor" should pass — if it doesn't, check for invisible characters.
+`^[a-z0-9][a-z0-9-]*$`). Enforced to prevent path traversal.
 
 **`merge-work.sh` says the working tree is dirty.**
 Intentional. `git checkout` on a dirty tree can lose work. Either
 `git commit` or `git stash` before re-running.
-
-**Codex CLI rejects the stdin prompt.**
-Older `codex` versions read prompts only from `argv`. Check
-`codex --help`. The pipeline script uses stdin for security; if your
-version doesn't support it, you'll need to upgrade or run agents with
-direct `codex "..."` calls (and accept the shell-injection risk).
 
 **An agent keeps producing identical output.**
 The agent reads stale state from `.team/`. Either:

@@ -103,13 +103,21 @@ git clone https://github.com/Riicke/SkillAgentTeam.git .agent-team \
   && rm -rf .agent-team
 ```
 
-That installs the skill for **both** Claude Code and Codex CLI and initializes `.team/` in your project. Then talk to Claude Code naturally:
+That installs the skill for **both** Claude Code and Codex CLI and initializes `.team/` in your project. Then run a task using whichever assistant you prefer.
+
+**With Claude Code** — talk to it naturally:
 
 ```
 Team, add user authentication with email and password.
 ```
 
-The Orchestrator routes the task through the appropriate phases and writes all outputs to `.team/`. Open `.team/vault/` in Obsidian to navigate the resulting knowledge graph.
+**With Codex CLI** — invoke the pipeline script:
+
+```bash
+bash .claude/skills/agent-team/scripts/run-codex-pipeline.sh feature "Add user authentication with email and password"
+```
+
+Either path routes the task through the appropriate phases and writes all outputs to `.team/`. Open `.team/vault/` in Obsidian to navigate the resulting knowledge graph.
 
 ---
 
@@ -205,9 +213,15 @@ your-project/
 
 ## Usage
 
-### Claude Code (automatic orchestration)
+The team can be driven by **Claude Code** (automatic orchestration) or by **Codex CLI** (scripted invocations). Both paths share the same `.team/` workspace, the same agent prompts, and the same Obsidian vault — you can mix them on the same project. Pick the one that fits your workflow.
 
-Talk to Claude Code naturally. The skill triggers on keywords like **"team"**, agent names ("Run the QA Agent"), or task-type verbs ("plan", "refactor", "fix"):
+### Path A — Claude Code (automatic)
+
+Claude Code reads the skill manifest at `.claude/skills/agent-team/SKILL.md` and triggers the Orchestrator automatically when your message matches the skill's description. There is no script to run — the Orchestrator role is the conversation itself, and it spawns agents in parallel through Claude Code's native `Agent` tool with `isolation: "worktree"` for code-writing roles.
+
+**Trigger keywords**: `"team"`, agent names (`"Run the QA Agent"`, `"Run the Architect"`), or task-type verbs (`"plan"`, `"refactor"`, `"fix"`, `"implement"`, `"review"`). The full keyword list is in the `description` field of the SKILL.md frontmatter.
+
+**Examples** of natural phrasings that trigger automatically:
 
 ```
 ✓ Team, add authentication to the server      → full pipeline
@@ -218,28 +232,63 @@ Talk to Claude Code naturally. The skill triggers on keywords like **"team"**, a
 ✓ Compliance review of the export endpoint    → Compliance + Security
 ```
 
-### Codex CLI (scripted)
+**Explicit invocation**: if the skill doesn't trigger automatically (for example because your phrasing doesn't match any keyword), invoke it directly:
 
-The pipeline script wraps Codex CLI invocations and passes prompts via stdin (so task descriptions cannot be shell-expanded):
+```
+/agent-team add user authentication
+```
+
+**Monitoring progress**: agents stream their progress into the conversation as they complete each phase, and the durable record lives in:
+
+- `.team/board.md` — current task state and per-agent status
+- `.team/agents/<role>/` — per-agent outputs for the current task
+- `.team/vault/` — long-term Obsidian-compatible documentation
+
+**Stopping mid-pipeline**: send `stop` or press Escape. Outputs already written to `.team/` survive; the Orchestrator can resume by re-reading the board on the next turn.
+
+**The full Claude Code orchestration protocol** — which agents the Orchestrator spawns, in what order, with what context, how it handles conflict resolution — is documented in [`SKILL.md`](SKILL.md).
+
+### Path B — Codex CLI (scripted)
+
+Codex CLI does not have native multi-agent orchestration, so the skill ships a wrapper script (`scripts/run-codex-pipeline.sh`) that runs the pipeline as a sequence of single-agent `codex` invocations. Prompts are written to a temp file and piped via stdin so that task descriptions cannot be shell-expanded.
+
+**Pipelines** (run the full team for a task type):
 
 ```bash
-# Pipelines
 bash .claude/skills/agent-team/scripts/run-codex-pipeline.sh feature  "Add an auth system"
 bash .claude/skills/agent-team/scripts/run-codex-pipeline.sh bugfix   "Login button not working"
 bash .claude/skills/agent-team/scripts/run-codex-pipeline.sh security "Audit the API surface"
 bash .claude/skills/agent-team/scripts/run-codex-pipeline.sh refactor "Split BigComponent.tsx"
 bash .claude/skills/agent-team/scripts/run-codex-pipeline.sh plan     "Design a plugin system"
+```
 
-# Single agent
+**Single agent**:
+
+```bash
 bash .claude/skills/agent-team/scripts/run-codex-pipeline.sh agent security-agent "Audit the API"
+```
 
-# Direct invocation
+**Direct invocation** (bypassing the pipeline script):
+
+```bash
 codex < <(printf 'Read .codex-agents/planner.md and follow its protocol.\nTask: Add notifications.\n')
 ```
 
-### Other frameworks
+**The full Codex CLI protocol** — the 9-step checklist Codex follows on each invocation, which files to read, where to write — is documented in [`AGENTS.md`](AGENTS.md). That file is also the entry point Codex itself reads when it starts in your project.
 
-The agent prompts are plain Markdown. Any framework that supports loading a system prompt from a file and giving the agent filesystem access can run them. See [`references/codex-adapter.md`](references/codex-adapter.md) for a worked LangGraph/CrewAI integration example.
+### Side-by-side comparison
+
+| Capability | Claude Code | Codex CLI |
+|------------|:-----------:|:---------:|
+| Automatic skill triggering | ✅ via SKILL.md description | ⚠️ via the wrapper script |
+| Parallel agents within a phase | ✅ native (`Agent` tool with `isolation: "worktree"`) | ❌ sequential within a phase |
+| Worktree isolation | ✅ automatic | ✅ via `create-worktree.sh` |
+| Conversation transcript | ✅ in-app | ⚠️ terminal scrollback |
+| Project entry point | [`SKILL.md`](SKILL.md) | [`AGENTS.md`](AGENTS.md) |
+
+### Path C — Other frameworks (LangGraph, CrewAI, AutoGen, …)
+
+The agent prompts are plain Markdown. Any framework that supports loading a system prompt from a file and giving the agent filesystem access can run them. Each agent prompt becomes the system prompt of one node in your graph; use `.team/` as shared state. See [`references/codex-adapter.md`](references/codex-adapter.md) for a worked integration example.
 
 ---
 
@@ -421,30 +470,57 @@ SkillAgentTeam/
 
 ## Troubleshooting
 
-**The skill isn't triggering automatically in Claude Code.**
-Confirm that `.claude/skills/agent-team/SKILL.md` exists in your project and that the frontmatter contains a `name: agent-team` field. Claude Code looks here for skill manifests; the `description` field contains the trigger keywords. Try invoking the skill explicitly with `/agent-team`.
+### Claude Code
+
+**The skill isn't triggering automatically.**
+Confirm `.claude/skills/agent-team/SKILL.md` exists in your project and the frontmatter contains `name: agent-team`. Claude Code looks here for skill manifests; the `description` field contains the trigger keywords. If your phrasing doesn't match any keyword, invoke the skill explicitly:
+
+```
+/agent-team add user authentication
+```
+
+**Sub-agents aren't running in parallel.**
+The Orchestrator uses Claude Code's `Agent` tool with `isolation: "worktree"`. Confirm your Claude Code version supports the `Agent` tool with isolation modes (1.0+). If you're on an older version, the pipeline will run sequentially — still correct, just slower.
+
+**The conversation hits a tool-permission prompt for every agent spawn.**
+Whitelist the `Agent` tool and `Bash(bash <skill>/scripts/*)` in your Claude Code settings, or run the project in `--auto-permissions` mode for trusted projects.
+
+### Codex CLI
+
+**`run-codex-pipeline.sh` reports a prompt error.**
+The pipeline passes prompts via stdin (`codex < <prompt-file>`). Confirm your `codex` version reads from stdin (`codex --help`). Older versions may require `-` as an explicit argument; in that case, edit `run-codex-pipeline.sh` line 119 to read `codex - < "$prompt_file"`.
+
+**Agents run but never write to `.team/`.**
+Codex needs filesystem access in the project root. Confirm you launched `codex` from the project directory and that `.team/` is writable.
+
+**Pipeline halts after the Planner — no Architect output.**
+Each phase reads the previous one's output. If the Planner wrote to `.team/agents/planner/` but the Architect skipped reading it, check that `AGENTS.md` is in the project root and that `.codex-agents/` exists. Codex reads both before each role.
+
+### Both / common
 
 **`init-team.sh` reports "Permission denied".**
 Run with `bash <path>` rather than executing directly:
+
 ```bash
 bash .claude/skills/agent-team/scripts/init-team.sh
 ```
+
 On Windows + Git Bash, use forward slashes in the path.
 
 **`create-worktree.sh` rejects an agent name or task ID.**
-Names must match `^[a-z0-9][a-z0-9-]*$` (lowercase alphanumerics and dashes, starting with a letter or digit). This is enforced to prevent path traversal and branch-name flag injection.
+Names must match `^[a-z0-9][a-z0-9-]*$` (lowercase alphanumerics and dashes, starting with a letter or digit). Enforced to prevent path traversal and branch-name flag injection.
 
 **`merge-work.sh` says the working tree has uncommitted changes.**
-This is intentional — checking out a different branch with uncommitted work risks losing it. Either commit the changes or `git stash` them, then re-run.
-
-**Codex CLI reports a prompt error.**
-The pipeline passes prompts via stdin. Confirm your `codex` version reads from stdin (`codex --help`); older versions may need `-` as an explicit argument.
+Intentional — checking out a different branch with uncommitted work risks losing it. Either `git commit` or `git stash` first, then re-run.
 
 **An agent keeps producing the same output across tasks.**
-Each agent reads from `.team/`. Stale state can cause repeats. Either archive the previous task (`mv .team/agents/<role>/* .team/archive/<task-id>/`) or run `init-team.sh` (it preserves existing files but creates a fresh task slot).
+Stale state in `.team/`. Either archive the previous task (`mv .team/agents/<role>/* .team/archive/<task-id>/`) or re-run `init-team.sh` (it preserves files but resets the board).
 
 **The Obsidian graph view isn't connecting documents.**
 Open `.team/vault/` as the vault root, not your project root. Wiki-links resolve relative to the vault root.
+
+**A re-install warns about an existing target.**
+Set `FORCE=1` to overwrite. Local edits to agent prompts will be lost — copy them out first if you've customized.
 
 ---
 
